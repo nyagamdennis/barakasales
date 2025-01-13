@@ -30,7 +30,8 @@ ALLOWED_HOSTS = [
     'murildennis.pythonanywhere.com',
     '127.0.0.1',
     'localhost:3000',
-    'localhost:5173'
+    'localhost:5173',
+    'barakagas.pythonanywhere.com'
 ]
 
 
