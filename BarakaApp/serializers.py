@@ -377,8 +377,11 @@ class CylinderInStoreSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Cylinder
-        fields = ['id', 'wholesale_selling_price', 'wholesale_refil_price', 
-                  'retail_selling_price', 'retail_refil_price', 'weight']
+        fields = ['id', 'min_wholesale_selling_price', 'min_wholesale_refil_price', 
+                  'min_retail_selling_price', 'min_retail_refil_price',  'max_wholesale_selling_price', 'max_wholesale_refil_price', 
+                  'max_retail_selling_price', 'max_retail_refil_price', 'weight']
+
+
 
 class CylinderStoreSerializer(serializers.ModelSerializer):
     cylinder_details = CylinderInStoreSerializer(source='cylinder', read_only=True)
@@ -416,12 +419,17 @@ class OtherProductsSerializer(serializers.ModelSerializer):
 class CylinderCreateSerializer(serializers.Serializer):
     gas_type = serializers.CharField()
     weight = serializers.IntegerField()
-    wholesale_selling_price = serializers.IntegerField()
-    wholesale_refil_price = serializers.IntegerField()
-    retail_selling_price = serializers.IntegerField()
-    retail_refil_price = serializers.IntegerField()
+    min_wholesale_selling_price = serializers.IntegerField()
+    min_wholesale_refil_price = serializers.IntegerField()
+    min_retail_selling_price = serializers.IntegerField()
+    min_retail_refil_price = serializers.IntegerField()
+    max_wholesale_selling_price = serializers.IntegerField()
+    max_wholesale_refil_price = serializers.IntegerField()
+    max_retail_selling_price = serializers.IntegerField()
+    max_retail_refil_price = serializers.IntegerField()
     filled = serializers.IntegerField()
     empties = serializers.IntegerField()
+    spoiled = serializers.IntegerField()
 
 
 

@@ -744,6 +744,7 @@ class RefillOperations(APIView):
 
 class AddNewCylinder(APIView):
     def post(self, request):
+        print('data ', request.data)
         serializer = CylinderCreateSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -752,12 +753,17 @@ class AddNewCylinder(APIView):
         data = serializer.validated_data
         gas_type_name = data['gas_type']
         weight_value = data['weight']
-        wholesale_selling_price = data['wholesale_selling_price']
-        wholesale_refil_price = data['wholesale_refil_price']
-        retail_selling_price = data['retail_selling_price']
-        retail_refil_price = data['retail_refil_price']
+        min_wholesale_selling_price = data['min_wholesale_selling_price']
+        min_wholesale_refil_price = data['min_wholesale_refil_price']
+        min_retail_selling_price = data['min_retail_selling_price']
+        min_retail_refil_price = data['min_retail_refil_price']
+        max_wholesale_selling_price = data['max_wholesale_selling_price']
+        max_wholesale_refil_price = data['max_wholesale_refil_price']
+        max_retail_selling_price = data['max_retail_selling_price']
+        max_retail_refil_price = data['max_retail_refil_price']
         filled = data['filled']
         empties = data['empties']
+        spoiled = data['spoiled']
 
         # Check if the gas type exists
         # gas_type, created_gas_type = CylinderType.objects.filter(name=gas_type_name).first()
@@ -779,18 +785,24 @@ class AddNewCylinder(APIView):
             cylinder = Cylinder.objects.create(
                 gas_type=gas_type,
                 weight=weight,
-                wholesale_selling_price=wholesale_selling_price,
-                wholesale_refil_price=wholesale_refil_price,
-                retail_selling_price=retail_selling_price,
-                retail_refil_price=retail_refil_price,
+                min_wholesale_selling_price=min_wholesale_selling_price,
+                min_wholesale_refil_price=min_wholesale_refil_price,
+                min_retail_selling_price=min_retail_selling_price,
+                min_retail_refil_price=min_retail_refil_price,
+                max_wholesale_selling_price=max_wholesale_selling_price,
+                max_wholesale_refil_price=max_wholesale_refil_price,
+                max_retail_selling_price=max_retail_selling_price,
+                max_retail_refil_price=max_retail_refil_price,
             )
 
+            print('created ', cylinder)
         # Add the cylinder to CylinderStore
         store = CylinderStore.objects.create(
             cylinder=cylinder,
             filled=filled,
             empties=empties,
             total_cylinders=filled + empties,
+            spoiled = spoiled,
             dates=datetime.now(),
         )
 
@@ -800,10 +812,14 @@ class AddNewCylinder(APIView):
                 'id': cylinder.id,
                 'gas_type': cylinder.gas_type.name,
                 'weight': cylinder.weight.weight,
-                'wholesale_selling_price': cylinder.wholesale_selling_price,
-                'wholesale_refil_price': cylinder.wholesale_refil_price,
-                'retail_selling_price': cylinder.retail_selling_price,
-                'retail_refil_price': cylinder.retail_refil_price,
+                'min_wholesale_selling_price': cylinder.min_wholesale_selling_price,
+                'min_wholesale_refil_price': cylinder.min_wholesale_refil_price,
+                'min_retail_selling_price': cylinder.min_retail_selling_price,
+                'min_retail_refil_price': cylinder.min_retail_refil_price,
+                'max_wholesale_selling_price': cylinder.max_wholesale_selling_price,
+                'max_wholesale_refil_price': cylinder.max_wholesale_refil_price,
+                'max_retail_selling_price': cylinder.max_retail_selling_price,
+                'max_retail_refil_price': cylinder.max_retail_refil_price,
             },
             'store': {
                 'id': store.id,
@@ -833,13 +849,89 @@ class CylinderOperations(APIView):
         return Response(serialize.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
-
 class AnotherCylinder(APIView):
     def post(self, request, pk):
+        print('New cylinder data:', request.data)
+        
+        # Get the gas_type (CylinderType) by ID
         try:
-            cylinder = CylinderType.objects.get(pk=pk)
+            cylinder_type = CylinderType.objects.get(pk=pk)
         except CylinderType.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'Gas type not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Extract weight from the request data
+        weight_data = request.data.get('weight')
+        if not weight_data:
+            return Response({'error': 'Weight is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if a weight already exists or create one
+        weight_instance, _ = CylinderWeight.objects.get_or_create(weight=int(weight_data))  # Convert weight to integer
+        
+        # Convert all prices and other numeric fields to integers
+        try:
+            min_wholesale_selling_price = int(request.data.get('min_wholesale_selling_price', 0))
+            min_wholesale_refil_price = int(request.data.get('min_wholesale_refill_price', 0))
+            min_retail_selling_price = int(request.data.get('min_retail_selling_price', 0))
+            min_retail_refil_price = int(request.data.get('min_retail_refill_price', 0))
+
+            max_wholesale_selling_price = int(request.data.get('max_wholesale_selling_price', 0))
+            max_wholesale_refil_price = int(request.data.get('max_wholesale_refill_price', 0))
+            max_retail_selling_price = int(request.data.get('max_retail_selling_price', 0))
+            max_retail_refil_price = int(request.data.get('max_retail_refill_price', 0))
+
+            empties = int(request.data.get('empties', 0))
+            filled = int(request.data.get('filled', 0))
+            spoiled = int(request.data.get('spoiled', 0))
+        except ValueError:
+            return Response({'error': 'All numeric fields must contain valid integers'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create the new cylinder
+        cylinder = Cylinder.objects.create(
+            gas_type=cylinder_type,
+            weight=weight_instance,
+            min_wholesale_selling_price=min_wholesale_selling_price,
+            min_wholesale_refil_price=min_wholesale_refil_price,
+            min_retail_selling_price=min_retail_selling_price,
+            min_retail_refil_price=min_retail_refil_price,
+            max_wholesale_selling_price=max_wholesale_selling_price,
+            max_wholesale_refil_price=max_wholesale_refil_price,
+            max_retail_selling_price=max_retail_selling_price,
+            max_retail_refil_price=max_retail_refil_price,
+        )
+
+        # Optionally, save cylinder store data if required
+        cylinder_store = CylinderStore.objects.create(
+            cylinder=cylinder,
+            empties=empties,
+            filled=filled,
+            spoiled=spoiled,
+            total_cylinders=empties + filled + spoiled,
+            dates=datetime.now(),
+        )
+
+        # Return success response
+        return Response(
+            {
+                'message': "New cylinder and store data created successfully.",
+                'cylinder_id': cylinder.id,
+                'gas_type': cylinder.gas_type.name,
+                'weight': cylinder.weight.weight,
+                'min_wholesale_selling_price': cylinder.min_wholesale_selling_price,
+                'min_wholesale_refil_price': cylinder.min_wholesale_refil_price,
+                'min_retail_selling_price': cylinder.min_retail_selling_price,
+                'min_retail_refil_price': cylinder.min_retail_refil_price,
+                'max_wholesale_selling_price': cylinder.max_wholesale_selling_price,
+                'max_wholesale_refil_price': cylinder.max_wholesale_refil_price,
+                'max_retail_selling_price': cylinder.max_retail_selling_price,
+                'max_retail_refil_price': cylinder.max_retail_refil_price,
+                'empties': cylinder_store.empties,
+                'filled': cylinder_store.filled,
+                'spoiled': cylinder_store.spoiled,
+                'total_cylinders': cylinder_store.total_cylinders,
+            },
+            status=status.HTTP_201_CREATED
+        )
+
         
 
     def delete(self, request, pk):

@@ -47,16 +47,10 @@ class CylinderType(models.Model):
 class Cylinder(models.Model):
     gas_type = models.ForeignKey(CylinderType, on_delete=models.CASCADE)
     weight = models.ForeignKey(CylinderWeight, on_delete=models.CASCADE)
-    wholesale_selling_price = models.PositiveIntegerField()
-    wholesale_refil_price = models.PositiveIntegerField()
-    retail_selling_price = models.PositiveIntegerField()
-    retail_refil_price = models.PositiveIntegerField()
-
     min_wholesale_selling_price = models.PositiveIntegerField(default=0)
     min_wholesale_refil_price = models.PositiveIntegerField(default=0)
     min_retail_selling_price = models.PositiveIntegerField(default=0)
     min_retail_refil_price = models.PositiveIntegerField(default=0)
-
     max_wholesale_selling_price = models.PositiveIntegerField(default=0)
     max_wholesale_refil_price = models.PositiveIntegerField(default=0)
     max_retail_selling_price = models.PositiveIntegerField(default=0)
