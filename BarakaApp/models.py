@@ -167,15 +167,46 @@ class AssignedCylinders(models.Model):
 
     def return_cylinders(self):
         # Update CylinderStore counts
+        self.cylinder.spoiled += self.spoiled
+        self.cylinder.empties += self.empties
+        self.cylinder.save()
+
+        # Mark transaction as complete
+        # self.transaction_complete = True
+        self.spoiled = 0
+        self.empties = 0
+        self.save()
+
+
+
+    def return_all_cylinders(self):
+        # Update CylinderStore counts
         self.cylinder.filled += self.filled
-        self.cylinder.empties += self.assigned_quantity
+        self.cylinder.spoiled += self.spoiled
+        self.cylinder.empties += self.empties
         self.cylinder.save()
 
         # Mark transaction as complete
         self.transaction_complete = True
+        self.spoiled = 0
+        self.empties = 0
+        self.filled = 0
+        self.assigned_quantity = 0
         self.save()
-    
 
+
+    # def return_cylinders(self):
+    #     # Update CylinderStore counts
+    #     self.cylinder.filled += self.filled
+    #     self.cylinder.empties += self.assigned_quantity
+    #     self.cylinder.save()
+
+    #     # Reset filled cylinders
+    #     self.filled = 0
+
+    #     # Mark transaction as complete
+    #     self.transaction_complete = True
+    #     self.save()
     # def __str__(self):
     #     return f'{self.cylinder.gas_type.name} {self.cylinder.weight.weight}'
 

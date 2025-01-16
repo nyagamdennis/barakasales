@@ -246,7 +246,7 @@ def assignedProduct(request):
     sales_teams = SalesTeam.objects.filter(employees__in=employee_records).distinct()
 
     # Filter assigned cylinders by the sales team(s)
-    productAssigned = AssignedCylinders.objects.filter(sales_team__in=sales_teams)
+    productAssigned = AssignedCylinders.objects.filter(sales_team__in=sales_teams, transaction_complete=False)
 
     # Serialize the data
     serialize = AssignedCylinderSerializerrr(productAssigned, many=True)
@@ -1079,17 +1079,50 @@ class AssignedCylindersListView(APIView):
 
 class ReturnAssignedCylindersView(APIView):
     def post(self, request):
-        print('data from here', request.data)
-        serializer = ReturnCylindersSerializer(data=request.data, many=True)
+        print('data ', request.data)
+        serializer = ReturnCylindersSerializer(data=request.data, many=True, partial=True)
+        
         serializer.is_valid(raise_exception=True)
+        print('serilized data ', serializer.validated_data)
 
         updated_cylinders = []
 
         for assignment in serializer.validated_data:
+            print("Errors:", serializer.errors)
+            print('assigned cylinder id ', assignment)
             try:
                 assigned_cylinder = AssignedCylinders.objects.get(id=assignment['id'])
+                # return_filled = assignment.get('return_filled', False) 
                 if not assigned_cylinder.transaction_complete:
                     assigned_cylinder.return_cylinders()
+                    updated_cylinders.append(assigned_cylinder)
+            except AssignedCylinders.DoesNotExist:
+                return Response({"error": f"AssignedCylinder with ID {assignment['id']} does not exist."},
+                                status=status.HTTP_404_NOT_FOUND)
+
+        # Serialize the updated cylinders
+        response_serializer = ReturnCylindersSerializer(updated_cylinders, many=True)
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+
+class ReturnAllAssignedCylindersView(APIView):
+    def post(self, request):
+        print('data ', request.data)
+        serializer = ReturnCylindersSerializer(data=request.data, many=True, partial=True)
+        
+        serializer.is_valid(raise_exception=True)
+        print('serilized data ', serializer.validated_data)
+
+        updated_cylinders = []
+
+        for assignment in serializer.validated_data:
+            print("Errors:", serializer.errors)
+            print('assigned cylinder id ', assignment)
+            try:
+                assigned_cylinder = AssignedCylinders.objects.get(id=assignment['id'])
+                # return_filled = assignment.get('return_filled', False) 
+                if not assigned_cylinder.transaction_complete:
+                    assigned_cylinder.return_all_cylinders()
                     updated_cylinders.append(assigned_cylinder)
             except AssignedCylinders.DoesNotExist:
                 return Response({"error": f"AssignedCylinder with ID {assignment['id']} does not exist."},
@@ -1175,10 +1208,35 @@ class SalesRecordsView(APIView):
         serializer = SalesRecordSerializer(sales, many=True, context={'request': request})
         return Response(serializer.data, status=200)
 
+class AdminSalesRecordsView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        # Filter sales by the sales team
+        sales = SalesTab.objects.order_by('-date_sold')
+
+        # Serialize the sales data
+        serializer = SalesRecordSerializer(sales, many=True, context={'request': request})
+        
+        return Response(serializer.data, status=200)
+    
+class AdminVerifySalesRecordsView(APIView):
+    permission_classes = [IsAuthenticated]
+    def patch(self, request, sale_id):
+        try:
+            sale = SalesTab.objects.get(id=sale_id)
+            sale.admin_payment_verified = not sale.admin_payment_verified
+            sale.save()
+            
+            serializer = SalesRecordSerializer(sale)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except SalesTab.DoesNotExist:
+            return Response({"error": "Sale not found."}, status=status.HTTP_404_NOT_FOUND)
+
+
 
 
 class CheckUserStatusView(APIView):
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user

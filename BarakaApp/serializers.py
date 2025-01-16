@@ -571,6 +571,7 @@ class BulkAssignedCylinderSerializer(serializers.Serializer):
 class ReturnCylindersSerializer(serializers.ModelSerializer):
     cylinder_type = serializers.CharField(source="cylinder.cylinder.gas_type.name", read_only=True)
     weight = serializers.IntegerField(source="cylinder.cylinder.weight.weight", read_only=True)
+    id = serializers.IntegerField(required=True)
     class Meta:
         model = AssignedCylinders
         fields = [
@@ -581,6 +582,7 @@ class ReturnCylindersSerializer(serializers.ModelSerializer):
             "filled",
             "empties",
             "transaction_complete",
+            "spoiled"
         ]
 
 
