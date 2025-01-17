@@ -998,6 +998,68 @@ class AssignCylinderView(APIView):
 #         ]
 
 #         return Response(response_data, status=status.HTTP_201_CREATED)
+# class BulkAssignCylinderView(APIView):
+#     def post(self, request):
+#         # Ensure the request data is a list
+#         if not isinstance(request.data, list):
+#             return Response({"error": "Expected a list of assignments"}, status=status.HTTP_400_BAD_REQUEST)
+
+#         serializer = BulkAssignedCylinderSerializer(data=request.data, many=True)
+#         serializer.is_valid(raise_exception=True)
+
+#         # Process each assignment
+#         assignments = []
+#         for item in serializer.validated_data:
+#             sales_team = item['sales_team']
+#             cylinder_store = item['cylinder']
+#             new_quantity = item['assigned_quantity']
+
+#             # Check if an assignment already exists for this sales team and cylinder
+#             existing_assignment = AssignedCylinders.objects.filter(
+#                 sales_team=sales_team,
+#                 cylinder=cylinder_store
+#             ).first()
+
+#             if existing_assignment:
+#                 # Update the assigned quantity
+#                 existing_assignment.assigned_quantity += new_quantity
+#                 existing_assignment.filled += new_quantity
+#                 existing_assignment.save()
+#             else:
+#                 # Create a new assignment
+#                 existing_assignment = AssignedCylinders.objects.create(
+#                     creator=request.user,
+#                     sales_team=sales_team,
+#                     cylinder=cylinder_store,
+#                     assigned_quantity=new_quantity,
+#                     filled=new_quantity
+#                 )
+
+#             # Reduce the filled quantity in CylinderStore
+#             if cylinder_store.filled >= new_quantity:
+#                 cylinder_store.filled -= new_quantity
+#                 cylinder_store.save()
+#             else:
+#                 raise serializers.ValidationError(
+#                     f"Not enough filled cylinders available. Current filled: {cylinder_store.filled}"
+#                 )
+
+#             assignments.append(existing_assignment)
+
+#         # Serialize and return the created or updated assignments
+#         response_data = [
+#             {
+#                 "id": assignment.id,
+#                 "sales_team": assignment.sales_team.id,
+#                 "cylinder": assignment.cylinder.id,
+#                 "assigned_quantity": assignment.assigned_quantity,
+#                 "date_assigned": assignment.date_assigned,
+#             }
+#             for assignment in assignments
+#         ]
+
+#         return Response(response_data, status=status.HTTP_201_CREATED)
+    
 class BulkAssignCylinderView(APIView):
     def post(self, request):
         # Ensure the request data is a list
@@ -1018,15 +1080,15 @@ class BulkAssignCylinderView(APIView):
             existing_assignment = AssignedCylinders.objects.filter(
                 sales_team=sales_team,
                 cylinder=cylinder_store
-            ).first()
+            ).exclude(transaction_complete=True).first()
 
             if existing_assignment:
-                # Update the assigned quantity
+                # Update the assigned quantity for incomplete transactions
                 existing_assignment.assigned_quantity += new_quantity
                 existing_assignment.filled += new_quantity
                 existing_assignment.save()
             else:
-                # Create a new assignment
+                # Create a new assignment if no incomplete transaction exists
                 existing_assignment = AssignedCylinders.objects.create(
                     creator=request.user,
                     sales_team=sales_team,
@@ -1059,7 +1121,7 @@ class BulkAssignCylinderView(APIView):
         ]
 
         return Response(response_data, status=status.HTTP_201_CREATED)
-    
+
 
 class AssignedCylindersListView(APIView):
     def get(self, request):
