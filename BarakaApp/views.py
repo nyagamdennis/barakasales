@@ -100,7 +100,10 @@ def add_customer(request):
 def record_sales(request):
     if request.method == 'POST':
         print('all data ', request.data)
+        print('user ', request.user)
         user_id = request.user
+        custom_user_id = user_id.id
+        print('user id ', custom_user_id)
 
         # Get the user's sales team
         try:
@@ -114,13 +117,38 @@ def record_sales(request):
         myDict = request.data
 
         # Customer and Sale Info
-        formdata['customer'] = myDict['customer']
+        
+
+        customer = myDict.get('customer', {})
+        type_of_sale = customer.get('sales', '')
+        # print('Sales type ', sales_type)
+
+        # Assign default customer details if not provided
+        name = customer.get('name', '')
+        phone = customer.get('phone', None)
+        location = customer.get('location', {}).get('name', '')
+
+        if not name or not phone or not location:
+            print('They are none')
+            if type_of_sale == "RETAIL":
+                customer['name'] = 'no_name'
+                customer['phone'] = '0700000000'
+                # customer['location'] = 'not_known'
+                customer['location'] = {'name': 'not_known'}
+
+            elif type_of_sale == "WHOLESALE":
+                customer['name'] = 'unknown'
+                customer['phone'] = '0711111111'
+                # customer['location'] = 'not_known'
+                customer['location'] = {'name': 'not_known'}
+
+        formdata['customer'] = customer
         formdata['sales_type'] = myDict['sales_type']
         formdata['is_fully_paid'] = myDict['is_fully_paid']
         formdata['partial_payment_amount'] = myDict['partial_payment_amount']
-        # formdata['exchanged_with_local'] = myDict['exchanged_with_local']
+        formdata['exchanged_with_local'] = myDict['exchanged_with_local']
         formdata['debt_amount'] = myDict['debt_amount']
-        formdata['expected_date_to_repay'] = myDict.get('expected_date_to_repay', None)
+        formdata['repayment_date'] = myDict.get('repayment_date', None)
         formdata['total_amount'] = myDict['total_amount']
         
         formdata['sales_person'] = request.user.id
@@ -195,15 +223,27 @@ def record_sales(request):
                 sale = serializer.save()
 
                 # Attach the debt to the first product if applicable
-                if i == 0 and formdata['debt_amount'] and formdata['expected_date_to_repay']:
+            
+                # if i == 0 and formdata['debt_amount'] and formdata['expected_date_to_repay']:
+                #     print('Has debt')
+                #     debt = Dbts.objects.create(
+                #         sales_tab=sale,
+                #         customer=sale.customer,
+                #         amount=formdata['debt_amount'],
+                #         expected_date_to_repay=formdata['expected_date_to_repay']
+                #     )
+                #     debt.save()
+                creator = CustomUser.objects.get(id=request.user.id)  
+                if not formdata['is_fully_paid'] and i == 0:
+                    print('Recording debt...')
                     debt = Dbts.objects.create(
+                        creator = creator,
                         sales_tab=sale,
                         customer=sale.customer,
                         amount=formdata['debt_amount'],
-                        expected_date_to_repay=formdata['expected_date_to_repay']
+                        expected_date_to_repay=formdata['repayment_date']
                     )
                     debt.save()
-
             else:
                 return Response(
                     {'error': 'Validation failed', 'details': serializer.errors},
@@ -1298,7 +1338,7 @@ class AdminVerifySalesRecordsView(APIView):
 
 
 class CheckUserStatusView(APIView):
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user

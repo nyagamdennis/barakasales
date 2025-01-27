@@ -296,10 +296,10 @@ class SalesTab(models.Model):
     
 class Dbts(models.Model):
     # authorized_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    sales_team = models.ForeignKey(SalesTeam, on_delete=models.CASCADE)
-    customer = models.ForeignKey(Customers, on_delete=models.CASCADE, related_name='customer_debt')
-    sales_tab = models.ForeignKey(SalesTab, on_delete=models.CASCADE)
+    creator = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
+    sales_team = models.ForeignKey(SalesTeam, on_delete=models.SET_NULL, null=True, blank=True)
+    customer = models.ForeignKey(Customers, on_delete=models.SET_NULL, null=True, blank=True, related_name='customer_debt')
+    sales_tab = models.ForeignKey(SalesTab, on_delete=models.SET_NULL, null=True, blank=True)
     amount = models.IntegerField()
     date_given = models.DateField(auto_now_add=True)
     expected_date_to_repay = models.DateField()

@@ -281,8 +281,64 @@ class SalesSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+
+
+class AssignedCylinderSerializeDebt(serializers.ModelSerializer):
+    gas_type = serializers.CharField(source="cylinder.cylinder.gas_type.name", read_only=True)
+    weight = serializers.IntegerField(source="cylinder.cylinder.weight.weight", read_only=True)
+    wholesale_selling_price = serializers.IntegerField(source="cylinder.cylinder.wholesale_selling_price", read_only=True)
+    wholesale_refil_price = serializers.IntegerField(source="cylinder.cylinder.wholesale_refil_price", read_only=True)
+    retail_selling_price = serializers.IntegerField(source="cylinder.cylinder.retail_selling_price", read_only=True)
+    retail_refil_price = serializers.IntegerField(source="cylinder.cylinder.retail_refil_price", read_only=True)
+
+    min_wholesale_selling_price = serializers.IntegerField(source="cylinder.cylinder.min_wholesale_selling_price", read_only=True)
+    min_wholesale_refil_price = serializers.IntegerField(source="cylinder.cylinder.min_wholesale_refil_price", read_only=True)
+    min_retail_selling_price = serializers.IntegerField(source="cylinder.cylinder.min_retail_selling_price", read_only=True)
+    min_retail_refil_price = serializers.IntegerField(source="cylinder.cylinder.min_retail_refil_price", read_only=True)
+    
+    max_wholesale_selling_price = serializers.IntegerField(source="cylinder.cylinder.max_wholesale_selling_price", read_only=True)
+    max_wholesale_refil_price = serializers.IntegerField(source="cylinder.cylinder.max_wholesale_refil_price", read_only=True)
+    max_retail_selling_price = serializers.IntegerField(source="cylinder.cylinder.max_retail_selling_price", read_only=True)
+    max_retail_refil_price = serializers.IntegerField(source="cylinder.cylinder.max_retail_refil_price", read_only=True)
+
+    class Meta:
+        model = AssignedCylinders
+        fields = [
+            "id",
+            "sales_team",
+            "cylinder",
+            "gas_type",  # Include gas type
+            "weight",    # Include gas weight
+            "assigned_quantity",
+            "date_assigned",
+            "filled",
+            "empties",
+            "wholesale_sold",
+            "wholesale_refilled",
+            "retail_sold",
+            "retail_refilled",
+            "transaction_complete",
+            "spoiled",
+            "wholesale_selling_price",
+            "wholesale_refil_price",
+            "retail_selling_price",
+            "retail_refil_price",
+            "min_wholesale_selling_price",
+            "min_wholesale_refil_price",
+            "min_retail_selling_price",
+            "min_retail_refil_price",
+            "max_wholesale_selling_price",
+            "max_wholesale_refil_price",
+            "max_retail_selling_price",
+            "max_retail_refil_price"
+        ]
+
+
 class SalessSerializer(serializers.ModelSerializer):
-    product = AssignedCylindersSerializer()
+    # product = AssignedCylindersSerializer()
+    # sales_person = serializers.SerializerMethodField()
+    product = AssignedCylinderSerializeDebt(read_only=True)
+    # debt_info = serializers.SerializerMethodField()
     class Meta:
         model = SalesTab
         fields = '__all__'
@@ -293,8 +349,9 @@ class Debtorsserializer(serializers.ModelSerializer):
         model = Dbts
         fields = '__all__'
 
+
 class Customerserializer(serializers.ModelSerializer):
-    customer_sales = SalesSerializer(many=True, read_only=True)
+    customer_sales = SalessSerializer(many=True, read_only=True)
     customer_debt = Debtorsserializer(many=True, read_only=True)
     location = CustomerLocationSerializer()
 
@@ -302,6 +359,15 @@ class Customerserializer(serializers.ModelSerializer):
         model = Customers
         fields = '__all__'
 
+
+class AllDebtorsSerializer(serializers.ModelSerializer):
+    sales_tab = SalessSerializer()
+    customer = Customerserializer()
+
+    
+    class Meta:
+        model = Dbts
+        fields = '__all__'
         
 class SaleSerializer(serializers.ModelSerializer):
     # who_recorded_sale = EmployeesSerializer()
