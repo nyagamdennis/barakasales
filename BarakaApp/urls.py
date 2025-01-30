@@ -22,7 +22,6 @@ urlpatterns = [
     path('sales-team-management/', views.sales_team_management, name='sales-team-management'),
     path('update_assigned_quantity/<str:pk>/', views.update_assigned_quantity, name='update_assigned_quantity'),
     path('createteam/', views.createteam),
-    # path('business/<int:pk>', views.BusinessOperations.as_view()),
     path('store/', views.Stores, name='store'),
     path('other-products/', views.OtherProductsViews.as_view(), name='store'),
     path('refill/', views.RefillOperations.as_view()),
@@ -31,8 +30,11 @@ urlpatterns = [
     path('addanothercylinder/<str:pk>/', views.AnotherCylinder.as_view()),
     path('assign-cylinders/', views.BulkAssignCylinderView.as_view(), name='assign-cylinders'),
     path('the-assigned-cylinders/', views.AssignedCylindersListView.as_view(), name='assigned-cylinders-list'),
+    path('print-assigned-cylinders/', views.AssignedCylindersPrintableView.as_view(), name='assigned-cylinders-list'),
     path('return-assigned-cylinders/', views.ReturnAssignedCylindersView.as_view(), name='return-assigned-cylinders'),
     path('return-all-assigned-cylinders/', views.ReturnAllAssignedCylindersView.as_view(), name='return-all-assigned-cylinders'),
+    path('after-return/', views.ReturnCylindersPrintableView.as_view()),
+
     path('addspoiled/', views.addassignedProductSpoiled),
     path('updatespoiled/', views.updateassignedProductSpoiled),
     path('myprofile/', views.MyProfiles.as_view()),
@@ -42,6 +44,5 @@ urlpatterns = [
     path('check-user-status/', views.CheckUserStatusView.as_view()),
     path('transfer/<str:employee_id>/', views.transfer_employee),
     path('update-status/<str:employee_id>/', views.update_employee_status),
+    path('clear_debt/<str:pk>/', views.DebtOperation.as_view()),
 ]
-
-# urlpatterns + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

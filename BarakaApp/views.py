@@ -49,7 +49,7 @@ def customers(request):
 
 @api_view(['GET'])
 def debtors(request):
-    depts = Dbts.objects.all()
+    depts = Dbts.objects.filter(cleared = False).order_by('-date_given')
     debtorserialize = Debtorsserializer(depts, many=True)
     
     return Response(debtorserialize.data)
@@ -1147,6 +1147,12 @@ class BulkAssignCylinderView(APIView):
                 )
 
             assignments.append(existing_assignment)
+            AssignedCylindersRecipt.objects.create(
+                sales_team=sales_team,
+                cylinder=cylinder_store,
+                assigned_quantity=new_quantity
+            )
+
 
         # Serialize and return the created or updated assignments
         response_data = [
@@ -1163,9 +1169,36 @@ class BulkAssignCylinderView(APIView):
         return Response(response_data, status=status.HTTP_201_CREATED)
 
 
+class AssignedCylindersPrintableView(APIView):
+    def get(self, request):
+        # Optionally filter by sales team if provided
+        sales_team_id = request.query_params.get('sales_team')
+        if sales_team_id:
+            assigned_cylinders = AssignedCylindersRecipt.objects.filter(sales_team_id=sales_team_id, print_complete=False)
+        else:
+            assigned_cylinders = AssignedCylindersRecipt.objects.all()
+
+        serializer = AssignedCylinderReceiptSerializer(assigned_cylinders, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
+class ReturnCylindersPrintableView(APIView):
+    def get(self, request):
+        # Optionally filter by sales team if provided
+        sales_team_id = request.query_params.get('sales_team')
+        if sales_team_id:
+            return_cylinders = ReturnClylindersReciept.objects.filter(sales_team_id=sales_team_id, print_complete=False)
+        else:
+            return_cylinders = ReturnClylindersReciept.objects.all()
+        
+        serializer = ReturnCylinderReceiptSerializer(return_cylinders, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
 class AssignedCylindersListView(APIView):
     def get(self, request):
-        sales_team_id = request.query_params.get('sales_team')
         # Optionally filter by sales team if provided
         sales_team_id = request.query_params.get('sales_team')
         if sales_team_id:
@@ -1179,25 +1212,70 @@ class AssignedCylindersListView(APIView):
 
 
 
+# class ReturnAssignedCylindersView(APIView):
+#     def post(self, request):
+#         # print('data ', request.data)
+#         serializer = ReturnCylindersSerializer(data=request.data, many=True, partial=True)
+        
+#         serializer.is_valid(raise_exception=True)
+#         # print('serilized data ', serializer.validated_data)
+
+#         updated_cylinders = []
+
+#         for assignment in serializer.validated_data:
+#             # print("Errors:", serializer.errors)
+#             # print('assigned cylinder id ', assignment)
+#             try:
+#                 assigned_cylinder = AssignedCylinders.objects.get(id=assignment['id'])
+#                 print('assigned cylinders data', assigned_cylinder)
+#                 # return_filled = assignment.get('return_filled', False) 
+#                 if not assigned_cylinder.transaction_complete:
+#                     assigned_cylinder.return_cylinders()
+#                     filled, empties, spoiled = assigned_cylinder.return_cylinders()
+#                     updated_cylinders.append(assigned_cylinder)
+
+#                     # Create a return receipt for the completed transaction
+#                     ReturnClylindersReciept.objects.create(
+#                         sales_team=assigned_cylinder.sales_team,
+#                         cylinder=assigned_cylinder.cylinder,
+#                         filled = filled,
+#                         empties = empties,
+#                         spoiled = spoiled,
+#                     )
+
+#             except AssignedCylinders.DoesNotExist:
+#                 return Response({"error": f"AssignedCylinder with ID {assignment['id']} does not exist."},
+#                                 status=status.HTTP_404_NOT_FOUND)
+
+#         # Serialize the updated cylinders
+#         response_serializer = ReturnCylindersSerializer(updated_cylinders, many=True)
+#         return Response(response_serializer.data, status=status.HTTP_200_OK)
+
 class ReturnAssignedCylindersView(APIView):
     def post(self, request):
-        print('data ', request.data)
         serializer = ReturnCylindersSerializer(data=request.data, many=True, partial=True)
-        
         serializer.is_valid(raise_exception=True)
-        print('serilized data ', serializer.validated_data)
 
         updated_cylinders = []
 
         for assignment in serializer.validated_data:
-            print("Errors:", serializer.errors)
-            print('assigned cylinder id ', assignment)
             try:
                 assigned_cylinder = AssignedCylinders.objects.get(id=assignment['id'])
-                # return_filled = assignment.get('return_filled', False) 
+                
                 if not assigned_cylinder.transaction_complete:
-                    assigned_cylinder.return_cylinders()
+                    # Return cylinders and capture returned values
+                    filled, empties, spoiled = assigned_cylinder.return_cylinders()
                     updated_cylinders.append(assigned_cylinder)
+
+                    # Create a return receipt for the completed transaction
+                    ReturnClylindersReciept.objects.create(
+                        sales_team=assigned_cylinder.sales_team,
+                        cylinder=assigned_cylinder.cylinder,
+                        filled=filled,
+                        empties=empties,
+                        spoiled=spoiled,
+                    )
+
             except AssignedCylinders.DoesNotExist:
                 return Response({"error": f"AssignedCylinder with ID {assignment['id']} does not exist."},
                                 status=status.HTTP_404_NOT_FOUND)
@@ -1224,8 +1302,19 @@ class ReturnAllAssignedCylindersView(APIView):
                 assigned_cylinder = AssignedCylinders.objects.get(id=assignment['id'])
                 # return_filled = assignment.get('return_filled', False) 
                 if not assigned_cylinder.transaction_complete:
-                    assigned_cylinder.return_all_cylinders()
+                    # assigned_cylinder.return_all_cylinders()
+                    filled, empties, spoiled = assigned_cylinder.return_all_cylinders()
                     updated_cylinders.append(assigned_cylinder)
+
+                    # Create a return receipt for the completed transaction
+                    ReturnClylindersReciept.objects.create(
+                        sales_team=assigned_cylinder.sales_team,
+                        cylinder=assigned_cylinder.cylinder,
+                        filled=filled,
+                        empties=empties,
+                        spoiled=spoiled,
+                    )
+
             except AssignedCylinders.DoesNotExist:
                 return Response({"error": f"AssignedCylinder with ID {assignment['id']} does not exist."},
                                 status=status.HTTP_404_NOT_FOUND)
@@ -1235,6 +1324,7 @@ class ReturnAllAssignedCylindersView(APIView):
         return Response(response_serializer.data, status=status.HTTP_200_OK)
 
 
+# class 
 
 class ViewAllSales(APIView):
     def get(self, request):
@@ -1547,16 +1637,6 @@ def update_employee_status(request, employee_id):
 @api_view(['PATCH'])
 @permission_classes([IsAdminUser])
 def transfer_employee(request, employee_id):
-    # try:
-    #     employee = Employees.objects.get(id=employee_id)
-    #     sales_team_id = request.data.get('sales_team_id')
-    #     print('Sales team id ', sales_team_id)
-    #     sales_team = SalesTeam.objects.get(id=sales_team_id)
-    #     employee.sales_team = sales_team
-    #     employee.save()
-    #     return Response({"message": "Employee transferred successfully"}, status=200)
-    # except Employees.DoesNotExist:
-    #     return Response({"error": "Employee or Sales Team not found"}, status=404)
     try:
         # Get the employee
         employee = Employees.objects.get(id=employee_id)
@@ -1586,3 +1666,22 @@ def transfer_employee(request, employee_id):
         return Response({"error": "Employee not found"}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+
+class DebtOperation(APIView):
+    def post(self, request, pk):
+        debt = get_object_or_404(Dbts, pk=pk)
+
+        if debt.cleared:  # Optional check if it's already cleared
+            return Response(
+                {"message": f"Debt {pk} is already cleared."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        debt.cleared = True
+        debt.save()
+        return Response(
+            {"message": f"Debt {pk} deleted successfully."},
+            status=status.HTTP_204_NO_CONTENT
+        )

@@ -599,6 +599,45 @@ class AssignedCylinderSerializerrr(serializers.ModelSerializer):
         ]
 
 
+class AssignedCylinderReceiptSerializer(serializers.ModelSerializer):
+    gas_type = serializers.CharField(source="cylinder.cylinder.gas_type.name", read_only=True)
+    weight = serializers.IntegerField(source="cylinder.cylinder.weight.weight", read_only=True)
+    sales_team = CreateSalesTeamSerializer(read_only=True)
+    
+    class Meta:
+        model = AssignedCylindersRecipt
+        fields = [
+            "id",
+            "sales_team",
+            "cylinder",
+            "gas_type",  # Include gas type
+            "weight",    # Include gas weight
+            "assigned_quantity",
+            "date_assigned",
+        ]
+
+
+
+class ReturnCylinderReceiptSerializer(serializers.ModelSerializer):
+    gas_type = serializers.CharField(source="cylinder.cylinder.gas_type.name", read_only=True)
+    weight = serializers.IntegerField(source="cylinder.cylinder.weight.weight", read_only=True)
+    sales_team = CreateSalesTeamSerializer(read_only=True)
+    
+    class Meta:
+        model = ReturnClylindersReciept
+        fields = [
+            "id",
+            "sales_team",
+            "cylinder",
+            "gas_type",  # Include gas type
+            "weight",    # Include gas weight
+            "spoiled",
+            "filled",
+            "empties",
+            "date_collected",
+        ]
+
+
 
 class AssignedOtherProductSerializer(serializers.ModelSerializer):
     

@@ -166,7 +166,12 @@ class AssignedCylinders(models.Model):
 
 
     def return_cylinders(self):
+        filled_returned = self.filled
+        empties_returned = self.empties
+        spoiled_returned = self.spoiled
+
         # Update CylinderStore counts
+        self.assigned_quantity == self.filled
         self.cylinder.spoiled += self.spoiled
         self.cylinder.empties += self.empties
         self.cylinder.save()
@@ -177,9 +182,15 @@ class AssignedCylinders(models.Model):
         self.empties = 0
         self.save()
 
+        return filled_returned, empties_returned, spoiled_returned
+
 
 
     def return_all_cylinders(self):
+        filled_returned = self.filled
+        empties_returned = self.empties
+        spoiled_returned = self.spoiled
+
         # Update CylinderStore counts
         self.cylinder.filled += self.filled
         self.cylinder.spoiled += self.spoiled
@@ -194,21 +205,32 @@ class AssignedCylinders(models.Model):
         self.assigned_quantity = 0
         self.save()
 
+        return filled_returned, empties_returned, spoiled_returned
 
-    # def return_cylinders(self):
-    #     # Update CylinderStore counts
-    #     self.cylinder.filled += self.filled
-    #     self.cylinder.empties += self.assigned_quantity
-    #     self.cylinder.save()
 
-    #     # Reset filled cylinders
-    #     self.filled = 0
+class ReturnClylindersReciept(models.Model):
+    sales_team = models.ForeignKey(SalesTeam, on_delete=models.SET_NULL, null=True, blank=True)
+    cylinder = models.ForeignKey(CylinderStore, on_delete=models.SET_NULL, null=True, blank=True)
+    filled = models.PositiveIntegerField(default=0)
+    empties = models.PositiveIntegerField(default=0)
+    spoiled = models.PositiveIntegerField(default=0)
+    print_complete = models.BooleanField(default=False)
+    date_collected = models.DateTimeField(auto_now_add=True)
 
-    #     # Mark transaction as complete
-    #     self.transaction_complete = True
-    #     self.save()
     # def __str__(self):
-    #     return f'{self.cylinder.gas_type.name} {self.cylinder.weight.weight}'
+    #     return self.empties
+
+class AssignedCylindersRecipt(models.Model):
+    sales_team = models.ForeignKey(SalesTeam, on_delete=models.SET_NULL, null=True, blank=True)
+    cylinder = models.ForeignKey(CylinderStore, on_delete=models.SET_NULL, null=True, blank=True)
+    assigned_quantity = models.PositiveIntegerField(default=0)
+    print_complete = models.BooleanField(default=False)
+    date_assigned = models.DateTimeField(auto_now_add=True)
+
+    # def __str__(self):
+    #     return self.assigned_quantity
+
+
 
 
 
@@ -227,8 +249,7 @@ class AssignedOtherProducts(models.Model):
 
 
 
-class AssignedCylindersRecipt(models.Model):
-    date = models.DateTimeField(auto_now_add=True)
+
 
     
 class Customers(models.Model):
@@ -303,6 +324,7 @@ class Dbts(models.Model):
     amount = models.IntegerField()
     date_given = models.DateField(auto_now_add=True)
     expected_date_to_repay = models.DateField()
+    cleared = models.BooleanField(default=False)
     
     def __str__(self):
         return f'{self.customer.name} has a debt of {self.amount}'
