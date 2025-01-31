@@ -45,4 +45,5 @@ urlpatterns = [
     path('transfer/<str:employee_id>/', views.transfer_employee),
     path('update-status/<str:employee_id>/', views.update_employee_status),
     path('clear_debt/<str:pk>/', views.DebtOperation.as_view()),
+    path('mark-print-complete/', views.MarkPrintCompleteView.as_view(), name='mark-print-complete'),
 ]

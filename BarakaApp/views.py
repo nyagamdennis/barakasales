@@ -1324,7 +1324,19 @@ class ReturnAllAssignedCylindersView(APIView):
         return Response(response_serializer.data, status=status.HTTP_200_OK)
 
 
-# class 
+class MarkPrintCompleteView(APIView):
+    def post(self, request):
+        sales_team_id = request.data.get("sales_team_id")
+
+        # Ensure the sales_team_id is provided
+        if not sales_team_id:
+            return Response({"error": "Sales team ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Mark print_complete as True for the matching records
+        ReturnClylindersReciept.objects.filter(sales_team_id=sales_team_id, print_complete=False).update(print_complete=True)
+        AssignedCylindersRecipt.objects.filter(sales_team_id=sales_team_id, print_complete=False).update(print_complete=True)
+
+        return Response({"message": "Print status successfully updated."}, status=status.HTTP_200_OK)
 
 class ViewAllSales(APIView):
     def get(self, request):
