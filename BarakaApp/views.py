@@ -1202,11 +1202,13 @@ class AssignedCylindersListView(APIView):
         # Optionally filter by sales team if provided
         sales_team_id = request.query_params.get('sales_team')
         if sales_team_id:
-            assigned_cylinders = AssignedCylindersRecipt.objects.filter(sales_team_id=sales_team_id, print_complete=False)
+            assigned_cylinders = AssignedCylinders.objects.filter(sales_team_id=sales_team_id, transaction_complete=False)
+            
         else:
-            assigned_cylinders = AssignedCylindersRecipt.objects.all()
+            assigned_cylinders = AssignedCylinders.objects.all()
 
-        serializer = AssignedCylinderReceiptSerializer(assigned_cylinders, many=True)
+        serializer = AssignedCylinderSerializerrr(assigned_cylinders, many=True)
+        # print('assigned ', serializer.data)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 
@@ -1295,7 +1297,7 @@ class MarkPrintCompleteView(APIView):
             return Response({"error": "Sales team ID is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Mark print_complete as True for the matching records
-        ReturnClylindersReciept.objects.filter(sales_team_id=sales_team_id, print_complete=False).update(print_complete=True)
+        # ReturnClylindersReciept.objects.filter(sales_team_id=sales_team_id, print_complete=False).update(print_complete=True)
         AssignedCylindersRecipt.objects.filter(sales_team_id=sales_team_id, print_complete=False).update(print_complete=True)
 
         return Response({"message": "Print status successfully updated."}, status=status.HTTP_200_OK)
