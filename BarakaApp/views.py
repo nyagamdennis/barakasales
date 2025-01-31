@@ -1202,54 +1202,16 @@ class AssignedCylindersListView(APIView):
         # Optionally filter by sales team if provided
         sales_team_id = request.query_params.get('sales_team')
         if sales_team_id:
-            assigned_cylinders = AssignedCylinders.objects.filter(sales_team_id=sales_team_id, transaction_complete=False)
+            assigned_cylinders = AssignedCylindersRecipt.objects.filter(sales_team_id=sales_team_id, print_complete=False)
         else:
-            assigned_cylinders = AssignedCylinders.objects.all()
+            assigned_cylinders = AssignedCylindersRecipt.objects.all()
 
-        serializer = AssignedCylinderSerializerrr(assigned_cylinders, many=True)
+        serializer = AssignedCylinderReceiptSerializer(assigned_cylinders, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 
 
 
-# class ReturnAssignedCylindersView(APIView):
-#     def post(self, request):
-#         # print('data ', request.data)
-#         serializer = ReturnCylindersSerializer(data=request.data, many=True, partial=True)
-        
-#         serializer.is_valid(raise_exception=True)
-#         # print('serilized data ', serializer.validated_data)
-
-#         updated_cylinders = []
-
-#         for assignment in serializer.validated_data:
-#             # print("Errors:", serializer.errors)
-#             # print('assigned cylinder id ', assignment)
-#             try:
-#                 assigned_cylinder = AssignedCylinders.objects.get(id=assignment['id'])
-#                 print('assigned cylinders data', assigned_cylinder)
-#                 # return_filled = assignment.get('return_filled', False) 
-#                 if not assigned_cylinder.transaction_complete:
-#                     assigned_cylinder.return_cylinders()
-#                     filled, empties, spoiled = assigned_cylinder.return_cylinders()
-#                     updated_cylinders.append(assigned_cylinder)
-
-#                     # Create a return receipt for the completed transaction
-#                     ReturnClylindersReciept.objects.create(
-#                         sales_team=assigned_cylinder.sales_team,
-#                         cylinder=assigned_cylinder.cylinder,
-#                         filled = filled,
-#                         empties = empties,
-#                         spoiled = spoiled,
-#                     )
-
-#             except AssignedCylinders.DoesNotExist:
-#                 return Response({"error": f"AssignedCylinder with ID {assignment['id']} does not exist."},
-#                                 status=status.HTTP_404_NOT_FOUND)
-
-#         # Serialize the updated cylinders
-#         response_serializer = ReturnCylindersSerializer(updated_cylinders, many=True)
-#         return Response(response_serializer.data, status=status.HTTP_200_OK)
 
 class ReturnAssignedCylindersView(APIView):
     def post(self, request):
@@ -1335,6 +1297,20 @@ class MarkPrintCompleteView(APIView):
         # Mark print_complete as True for the matching records
         ReturnClylindersReciept.objects.filter(sales_team_id=sales_team_id, print_complete=False).update(print_complete=True)
         AssignedCylindersRecipt.objects.filter(sales_team_id=sales_team_id, print_complete=False).update(print_complete=True)
+
+        return Response({"message": "Print status successfully updated."}, status=status.HTTP_200_OK)
+
+class MarkPrintReturnCompleteView(APIView):
+    def post(self, request):
+        sales_team_id = request.data.get("sales_team_id")
+
+        # Ensure the sales_team_id is provided
+        if not sales_team_id:
+            return Response({"error": "Sales team ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Mark print_complete as True for the matching records
+        ReturnClylindersReciept.objects.filter(sales_team_id=sales_team_id, print_complete=False).update(print_complete=True)
+        # AssignedCylindersRecipt.objects.filter(sales_team_id=sales_team_id, print_complete=False).update(print_complete=True)
 
         return Response({"message": "Print status successfully updated."}, status=status.HTTP_200_OK)
 
