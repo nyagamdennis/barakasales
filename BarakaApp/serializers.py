@@ -578,6 +578,8 @@ class AssignedCylinderSerializerrr(serializers.ModelSerializer):
             "date_assigned",
             "filled",
             "empties",
+            "filled_lost",
+            "empties_lost",
             "wholesale_sold",
             "wholesale_refilled",
             "retail_sold",
@@ -634,6 +636,8 @@ class ReturnCylinderReceiptSerializer(serializers.ModelSerializer):
             "spoiled",
             "filled",
             "empties",
+            "empties_lost",
+            "filled_lost",
             "date_collected",
         ]
 

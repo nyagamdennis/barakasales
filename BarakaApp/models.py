@@ -154,6 +154,8 @@ class AssignedCylinders(models.Model):
     spoiled = models.PositiveIntegerField(default=0)
     filled = models.PositiveIntegerField(default=0)
     empties = models.PositiveIntegerField(default=0)
+    filled_lost = models.PositiveIntegerField(default=0)
+    empties_lost = models.PositiveIntegerField(default=0)
     wholesale_sold = models.PositiveIntegerField(default=0)
     wholesale_refilled = models.PositiveIntegerField(default=0)
     retail_sold = models.PositiveIntegerField(default=0)
@@ -168,33 +170,40 @@ class AssignedCylinders(models.Model):
     def return_cylinders(self):
         filled_returned = self.filled
         empties_returned = self.empties
+        filled_lost_returned = self.filled_lost
+        empties_lost_returned = self.empties_lost
         spoiled_returned = self.spoiled
 
         # Update CylinderStore counts
-        self.assigned_quantity == self.filled
+        self.assigned_quantity == (self.filled - self.filled_lost)
         self.cylinder.spoiled += self.spoiled
-        self.cylinder.empties += self.empties
+        self.cylinder.empties += (self.empties - self.empties_lost)
+        self.cylinder.filled -= self.filled_lost
         self.cylinder.save()
 
         # Mark transaction as complete
         # self.transaction_complete = True
         self.spoiled = 0
         self.empties = 0
+        self.empties_lost = 0
+        self.filled_lost = 0
         self.save()
 
-        return filled_returned, empties_returned, spoiled_returned
+        return filled_returned, empties_returned, spoiled_returned, filled_lost_returned, empties_lost_returned
 
 
 
     def return_all_cylinders(self):
         filled_returned = self.filled
         empties_returned = self.empties
+        filled_lost_returned = self.filled_lost
+        empties_lost_returned = self.empties_lost
         spoiled_returned = self.spoiled
 
         # Update CylinderStore counts
-        self.cylinder.filled += self.filled
+        self.cylinder.filled += (self.filled - self.filled_lost)
         self.cylinder.spoiled += self.spoiled
-        self.cylinder.empties += self.empties
+        self.cylinder.empties += (self.empties - self.empties_lost)
         self.cylinder.save()
 
         # Mark transaction as complete
@@ -202,10 +211,12 @@ class AssignedCylinders(models.Model):
         self.spoiled = 0
         self.empties = 0
         self.filled = 0
+        self.empties_lost = 0
+        self.filled_lost = 0
         self.assigned_quantity = 0
         self.save()
 
-        return filled_returned, empties_returned, spoiled_returned
+        return filled_returned, empties_returned, spoiled_returned, empties_lost_returned, filled_lost_returned
 
 
 class ReturnClylindersReciept(models.Model):
@@ -214,6 +225,10 @@ class ReturnClylindersReciept(models.Model):
     filled = models.PositiveIntegerField(default=0)
     empties = models.PositiveIntegerField(default=0)
     spoiled = models.PositiveIntegerField(default=0)
+    
+    empties_lost = models.PositiveIntegerField(default=0)
+    filled_lost = models.PositiveIntegerField(default=0)
+    
     print_complete = models.BooleanField(default=False)
     date_collected = models.DateTimeField(auto_now_add=True)
 
@@ -224,6 +239,8 @@ class AssignedCylindersRecipt(models.Model):
     sales_team = models.ForeignKey(SalesTeam, on_delete=models.SET_NULL, null=True, blank=True)
     cylinder = models.ForeignKey(CylinderStore, on_delete=models.SET_NULL, null=True, blank=True)
     assigned_quantity = models.PositiveIntegerField(default=0)
+    # empties_lost = models.PositiveIntegerField(default=0)
+    # filled_lost = models.PositiveIntegerField(default=0)
     print_complete = models.BooleanField(default=False)
     date_assigned = models.DateTimeField(auto_now_add=True)
 

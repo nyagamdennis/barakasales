@@ -1212,7 +1212,42 @@ class AssignedCylindersListView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 
+class AssingnedCylindersLost(APIView):
+    def post(self, request):
+        print('data lost ', request.data)
+        try:
+            # Extract sales team and cylinder loss details
+            sales_team_id = request.data.get('sales_team_id')
+            losses = request.data.get('losses', [])
 
+            if not sales_team_id or not losses:
+                return Response({"error": "Sales team ID and losses are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+            for loss in losses:
+                cylinder_id = loss.get('cylinder_id')
+                filled_lost = loss.get('filled_lost', 0)
+                empties_lost = loss.get('empties_lost', 0)
+
+                # Update assigned cylinder record
+                assigned_cylinder = AssignedCylinders.objects.filter(
+                    sales_team_id=sales_team_id,
+                    cylinder_id=cylinder_id,
+                    transaction_complete=False
+                ).first()
+                print('Cylinder lost ', assigned_cylinder)
+
+                if assigned_cylinder:
+                    assigned_cylinder.filled_lost += filled_lost
+                    assigned_cylinder.empties_lost += empties_lost
+                    assigned_cylinder.save()
+
+            # Serialize and return the updated data
+            updated_cylinders = AssignedCylinders.objects.filter(sales_team_id=sales_team_id, transaction_complete=False)
+            serializer = AssignedCylinderSerializerrr(updated_cylinders, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class ReturnAssignedCylindersView(APIView):
@@ -1228,7 +1263,7 @@ class ReturnAssignedCylindersView(APIView):
                 
                 if not assigned_cylinder.transaction_complete:
                     # Return cylinders and capture returned values
-                    filled, empties, spoiled = assigned_cylinder.return_cylinders()
+                    filled, empties, spoiled, filled_lost, empties_lost = assigned_cylinder.return_cylinders()
                     updated_cylinders.append(assigned_cylinder)
 
                     # Create a return receipt for the completed transaction
@@ -1237,6 +1272,8 @@ class ReturnAssignedCylindersView(APIView):
                         cylinder=assigned_cylinder.cylinder,
                         filled=filled,
                         empties=empties,
+                        filled_lost=filled_lost,
+                        empties_lost=empties_lost,
                         spoiled=spoiled,
                     )
 
@@ -1267,7 +1304,7 @@ class ReturnAllAssignedCylindersView(APIView):
                 # return_filled = assignment.get('return_filled', False) 
                 if not assigned_cylinder.transaction_complete:
                     # assigned_cylinder.return_all_cylinders()
-                    filled, empties, spoiled = assigned_cylinder.return_all_cylinders()
+                    filled, empties, spoiled, filled_lost, empties_lost  = assigned_cylinder.return_all_cylinders()
                     updated_cylinders.append(assigned_cylinder)
 
                     # Create a return receipt for the completed transaction
@@ -1276,6 +1313,8 @@ class ReturnAllAssignedCylindersView(APIView):
                         cylinder=assigned_cylinder.cylinder,
                         filled=filled,
                         empties=empties,
+                        filled_lost=filled_lost,
+                        empties_lost=empties_lost,
                         spoiled=spoiled,
                     )
 

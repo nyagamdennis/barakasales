@@ -47,4 +47,5 @@ urlpatterns = [
     path('clear_debt/<str:pk>/', views.DebtOperation.as_view()),
     path('mark-print-complete/', views.MarkPrintCompleteView.as_view(), name='mark-print-complete'),
     path('mark-print-return-complete/', views.MarkPrintReturnCompleteView.as_view(), name='mark-print-return-complete'),
+    path('report-cylinder-losses/', views.AssingnedCylindersLost.as_view())
 ]
