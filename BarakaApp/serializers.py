@@ -185,6 +185,52 @@ class RecordSalesSerializer(serializers.ModelSerializer):
         return sales_tab
 
 
+   
+class RecordOtherProductsSalesSerializer(serializers.ModelSerializer):
+    customer = AddCustomerSerializer()
+
+    class Meta:
+        model = OtherProductsSalesTab
+        fields = '__all__'
+
+    def create(self, validated_data):
+        customer_data = validated_data.pop('customer')
+        location_data = customer_data.pop('location', None)
+        customer_phone = customer_data['phone']
+
+        # Create a new location if provided
+        if location_data:
+            location, created = Locations.objects.get_or_create(**location_data)
+        else:
+            location = None
+
+        existing_customer = Customers.objects.filter(phone=customer_phone).first()
+
+        if existing_customer:
+            # Customer already exists, update their information
+            existing_customer.location = location
+            existing_customer.sales = customer_data['sales']
+            existing_customer.save()
+            sales_tab = OtherProductsSalesTab.objects.create(customer=existing_customer, **validated_data)
+        else:
+            # Create a new customer with the associated location
+            customer = Customers.objects.create(location=location, **customer_data)
+
+            # Create the sales tab with the newly created customer
+            sales_tab = OtherProductsSalesTab.objects.create(customer=customer, **validated_data)
+        expected_date_to_repay = validated_data.get('expected_date_to_repay')
+        debt_amount = validated_data.get('debt_amount')
+        if expected_date_to_repay and debt_amount:
+            debt = OtherProductsDbts.objects.create(
+                sales_tab=sales_tab,
+                customer=sales_tab.customer,
+                amount=debt_amount,
+                expected_date_to_repay=expected_date_to_repay
+            )
+            debt.save()        
+        return sales_tab
+
+
 
 
 
@@ -578,6 +624,7 @@ class AssignedCylinderSerializerrr(serializers.ModelSerializer):
             "date_assigned",
             "filled",
             "empties",
+            "less_pay",
             "filled_lost",
             "empties_lost",
             "wholesale_sold",
@@ -600,6 +647,72 @@ class AssignedCylinderSerializerrr(serializers.ModelSerializer):
             "max_retail_refil_price"
         ]
 
+class AssignedCylinderSerializerDefaulted(serializers.ModelSerializer):
+    gas_type = serializers.CharField(source="cylinder.cylinder.gas_type.name", read_only=True)
+    weight = serializers.IntegerField(source="cylinder.cylinder.weight.weight", read_only=True)
+    wholesale_selling_price = serializers.IntegerField(source="cylinder.cylinder.wholesale_selling_price", read_only=True)
+    wholesale_refil_price = serializers.IntegerField(source="cylinder.cylinder.wholesale_refil_price", read_only=True)
+    retail_selling_price = serializers.IntegerField(source="cylinder.cylinder.retail_selling_price", read_only=True)
+    retail_refil_price = serializers.IntegerField(source="cylinder.cylinder.retail_refil_price", read_only=True)
+
+    min_wholesale_selling_price = serializers.IntegerField(source="cylinder.cylinder.min_wholesale_selling_price", read_only=True)
+    min_wholesale_refil_price = serializers.IntegerField(source="cylinder.cylinder.min_wholesale_refil_price", read_only=True)
+    min_retail_selling_price = serializers.IntegerField(source="cylinder.cylinder.min_retail_selling_price", read_only=True)
+    min_retail_refil_price = serializers.IntegerField(source="cylinder.cylinder.min_retail_refil_price", read_only=True)
+    
+    max_wholesale_selling_price = serializers.IntegerField(source="cylinder.cylinder.max_wholesale_selling_price", read_only=True)
+    max_wholesale_refil_price = serializers.IntegerField(source="cylinder.cylinder.max_wholesale_refil_price", read_only=True)
+    max_retail_selling_price = serializers.IntegerField(source="cylinder.cylinder.max_retail_selling_price", read_only=True)
+    max_retail_refil_price = serializers.IntegerField(source="cylinder.cylinder.max_retail_refil_price", read_only=True)
+
+    class Meta:
+        model = AssignedCylinders
+        fields = [
+            "id",
+            "sales_team",
+            "cylinder",
+            "gas_type",  # Include gas type
+            "weight",    # Include gas weight
+            "assigned_quantity",
+            "date_assigned",
+            "filled",
+            "empties",
+            "less_pay",
+            "filled_lost",
+            "empties_lost",
+            "wholesale_sold",
+            "wholesale_refilled",
+            "retail_sold",
+            "retail_refilled",
+            "transaction_complete",
+            "spoiled",
+            "wholesale_selling_price",
+            "wholesale_refil_price",
+            "retail_selling_price",
+            "retail_refil_price",
+            "min_wholesale_selling_price",
+            "min_wholesale_refil_price",
+            "min_retail_selling_price",
+            "min_retail_refil_price",
+            "max_wholesale_selling_price",
+            "max_wholesale_refil_price",
+            "max_retail_selling_price",
+            "max_retail_refil_price"
+        ]
+
+class LostCylindersSerializer(serializers.ModelSerializer):
+    cylinder = AssignedCylinderSerializerDefaulted(read_only = True)
+    class Meta:
+        model = CylinderLost
+        fields = '__all__'
+
+
+class LessPayCylindersSerializer(serializers.ModelSerializer):
+    cylinder = AssignedCylinderSerializerDefaulted(read_only = True)
+    class Meta:
+        model = CylinderLessPay
+        fields = '__all__'
+
 
 class AssignedCylinderReceiptSerializer(serializers.ModelSerializer):
     gas_type = serializers.CharField(source="cylinder.cylinder.gas_type.name", read_only=True)
@@ -614,6 +727,23 @@ class AssignedCylinderReceiptSerializer(serializers.ModelSerializer):
             "cylinder",
             "gas_type",  # Include gas type
             "weight",    # Include gas weight
+            "assigned_quantity",
+            "date_assigned",
+        ]
+
+
+class AssignedOtherProductReceiptSerializer(serializers.ModelSerializer):
+    # gas_type = serializers.CharField(source="cylinder.cylinder.gas_type.name", read_only=True)
+    # weight = serializers.IntegerField(source="cylinder.cylinder.weight.weight", read_only=True)
+    product = OtherProductsSerializer(read_only=True)
+    sales_team = CreateSalesTeamSerializer(read_only=True)
+    
+    class Meta:
+        model = AssignedOtherProductRecipt
+        fields = [
+            "id",
+            "sales_team",
+            "product",
             "assigned_quantity",
             "date_assigned",
         ]
@@ -638,6 +768,7 @@ class ReturnCylinderReceiptSerializer(serializers.ModelSerializer):
             "empties",
             "empties_lost",
             "filled_lost",
+            "less_pay",
             "date_collected",
         ]
 
@@ -673,6 +804,22 @@ class BulkAssignedCylinderSerializer(serializers.Serializer):
         if assigned_quantity > cylinder_store.filled:
             raise serializers.ValidationError(
                 f"Assigned quantity exceeds available filled cylinders ({cylinder_store.filled})."
+            )
+        return data
+
+
+class BulkAssignedOtherProductsSerializer(serializers.Serializer):
+    sales_team = serializers.PrimaryKeyRelatedField(queryset=SalesTeam.objects.all())
+    product = serializers.PrimaryKeyRelatedField(queryset = OtherProducts.objects.all())
+    assigned_quantity = serializers.IntegerField()
+
+    def validate(self, data):
+        product_store = data.get('product')
+        assigned_quantity = data['assigned_quantity']
+
+        if assigned_quantity > product_store.quantity:
+            raise serializers.ValidationError(
+                f"Assigned quantity exceeds available quantity ({product_store.quantity})."
             )
         return data
 

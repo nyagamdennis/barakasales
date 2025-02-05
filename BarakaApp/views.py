@@ -103,7 +103,7 @@ def record_sales(request):
         print('user ', request.user)
         user_id = request.user
         custom_user_id = user_id.id
-        print('user id ', custom_user_id)
+        
 
         # Get the user's sales team
         try:
@@ -189,10 +189,7 @@ def record_sales(request):
 
             # Deduct the assigned quantity
             assigned_product.filled -= assigned_quantity
-            # if formdata['sales_type'] == "REFILL" and types_of_operation == "WHOLESALE":
-            #     print('Trues')
-            # else:
-            #     print('Not true')
+         
 
             if formdata['sales_type'] == "REFILL" and types_of_operation == "WHOLESALE":
                 assigned_product.wholesale_refilled += assigned_quantity
@@ -200,7 +197,6 @@ def record_sales(request):
 
             elif formdata['sales_type'] == "COMPLETESALE" and types_of_operation == "WHOLESALE":
                 assigned_product.wholesale_sold += assigned_quantity
-                # assigned_product.empties += assigned_quantity
 
             elif formdata['sales_type'] == "REFILL" and types_of_operation == "RETAIL":
                 assigned_product.retail_refilled += assigned_quantity
@@ -208,11 +204,7 @@ def record_sales(request):
                 
             elif formdata['sales_type'] == "COMPLETESALE" and types_of_operation == "RETAIL":
                 assigned_product.retail_sold += assigned_quantity
-                # assigned_product.empties += assigned_quantity
-
-            # elif formdata['sales_type'] == "REFILL":
-            #     print('None of the sales above')
-            # assigned_product
+                
             assigned_product.save()
 
             # Create the sales record
@@ -221,22 +213,141 @@ def record_sales(request):
             serializer = RecordSalesSerializer(data=formdata, context={'request': request})
             if serializer.is_valid():
                 sale = serializer.save()
-
-                # Attach the debt to the first product if applicable
-            
-                # if i == 0 and formdata['debt_amount'] and formdata['expected_date_to_repay']:
-                #     print('Has debt')
-                #     debt = Dbts.objects.create(
-                #         sales_tab=sale,
-                #         customer=sale.customer,
-                #         amount=formdata['debt_amount'],
-                #         expected_date_to_repay=formdata['expected_date_to_repay']
-                #     )
-                #     debt.save()
+                
                 creator = CustomUser.objects.get(id=request.user.id)  
                 if not formdata['is_fully_paid'] and i == 0:
                     print('Recording debt...')
                     debt = Dbts.objects.create(
+                        creator = creator,
+                        sales_tab=sale,
+                        customer=sale.customer,
+                        amount=formdata['debt_amount'],
+                        expected_date_to_repay=formdata['repayment_date']
+                    )
+                    debt.save()
+            else:
+                return Response(
+                    {'error': 'Validation failed', 'details': serializer.errors},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        return Response({'message': 'Sales recorded successfully'}, status=status.HTTP_201_CREATED)
+    else:
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def record_others_products_sales(request):
+    if request.method == 'POST':
+        print('all data ', request.data)
+        
+        user_id = request.user
+        custom_user_id = user_id.id
+        
+
+        # Get the user's sales team
+        try:
+            employee = Employees.objects.get(user__id=user_id.id)
+            sales_team = employee.sales_team.id
+        except Employees.DoesNotExist:
+            sales_team = None
+
+        formdata = {}
+        user_id = request.user.id
+        myDict = request.data
+
+        # Customer and Sale Info
+        
+
+        customer = myDict.get('customer', {})
+        type_of_sale = customer.get('sales', '')
+        # print('Sales type ', sales_type)
+
+        # Assign default customer details if not provided
+        name = customer.get('name', '')
+        phone = customer.get('phone', None)
+        location = customer.get('location', {}).get('name', '')
+
+        if not name or not phone or not location:
+            if type_of_sale == "RETAIL":
+                customer['name'] = 'no_name'
+                customer['phone'] = '0700000000'
+                customer['location'] = {'name': 'not_known'}
+
+            elif type_of_sale == "WHOLESALE":
+                customer['name'] = 'unknown'
+                customer['phone'] = '0711111111'
+                customer['location'] = {'name': 'not_known'}
+
+        formdata['customer'] = customer
+        # formdata['sales_type'] = myDict['sales_type']
+        formdata['is_fully_paid'] = myDict['is_fully_paid']
+        formdata['partial_payment_amount'] = myDict['partial_payment_amount']
+        formdata['debt_amount'] = myDict['debt_amount']
+        formdata['repayment_date'] = myDict.get('repayment_date', None)
+        formdata['total_amount'] = myDict['total_amount']
+        
+        formdata['sales_person'] = request.user.id
+        formdata['sales_team'] = sales_team
+        
+        cc = formdata['customer']
+        types_of_operation = cc.get('sales')
+
+        # formdata['sales_choice'] = types_of_operation
+        # Assign sales team
+        try:
+            employee = Employees.objects.get(user_id=user_id)
+            sales_team = employee.sales_team.id
+            formdata['sales_agents'] = sales_team
+        except Employees.DoesNotExist:
+            sales_team = None
+
+        # Process each product
+        products = myDict.get('products', [])
+        if not products:
+            return Response({'error': 'No products provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        for i, product_data in enumerate(products):
+            product_id = product_data.get('id')
+            assigned_quantity = product_data.get('quantity', 0)
+
+            try:
+                assigned_product = AssignedOtherProducts.objects.get(id=product_id)
+            except AssignedOtherProducts.DoesNotExist:
+                return Response({'error': f'Product with ID {product_id} does not exist'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Check if there's enough quantity for the sale
+            if assigned_product.assigned_quantity < assigned_quantity:
+                return Response(
+                    {'error': f'Not enough stock for the product. Ask admin for a restock.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Deduct the assigned quantity
+            assigned_product.assigned_quantity -= assigned_quantity
+         
+
+            if types_of_operation == "WHOLESALE":
+                assigned_product.wholesale_sold += assigned_quantity
+                
+          
+            elif types_of_operation == "RETAIL":
+                assigned_product.retail_sold += assigned_quantity
+                
+            assigned_product.save()
+
+            # Create the sales record
+            formdata['product'] = product_id
+            formdata['quantity'] = assigned_quantity
+            serializer = RecordOtherProductsSalesSerializer(data=formdata, context={'request': request})
+            if serializer.is_valid():
+                sale = serializer.save()
+                
+                creator = CustomUser.objects.get(id=request.user.id)  
+                if not formdata['is_fully_paid'] and i == 0:
+                    
+                    debt = OtherProductsDbts.objects.create(
                         creator = creator,
                         sales_tab=sale,
                         customer=sale.customer,
@@ -998,107 +1109,6 @@ class AssignCylinderView(APIView):
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-
-# class BulkAssignCylinderView(APIView):
-#     def post(self, request):
-#         print('data ', request.data)
-#         # Ensure the request data is a list
-#         if not isinstance(request.data, list):
-#             return Response({"error": "Expected a list of assignments"}, status=status.HTTP_400_BAD_REQUEST)
-
-#         serializer = BulkAssignedCylinderSerializer(data=request.data, many=True)
-#         serializer.is_valid(raise_exception=True)
-
-#         # Process each assignment
-#         assignments = []
-#         for item in serializer.validated_data:
-#             assigned_cylinder = AssignedCylinders.objects.create(
-#                 creator=request.user,
-#                 sales_team=item['sales_team'],
-#                 cylinder=item['cylinder'],
-#                 assigned_quantity=item['assigned_quantity'],
-#             )
-
-#             # Reduce the filled quantity in CylinderStore
-#             item['cylinder'].filled -= item['assigned_quantity']
-#             item['cylinder'].save()
-
-#             assignments.append(assigned_cylinder)
-
-#         # Serialize and return the created assignments
-#         response_data = [
-#             {
-#                 "id": assignment.id,
-#                 "sales_team": assignment.sales_team.id,
-#                 "cylinder": assignment.cylinder.id,
-#                 "assigned_quantity": assignment.assigned_quantity,
-#                 "date_assigned": assignment.date_assigned,
-#             }
-#             for assignment in assignments
-#         ]
-
-#         return Response(response_data, status=status.HTTP_201_CREATED)
-# class BulkAssignCylinderView(APIView):
-#     def post(self, request):
-#         # Ensure the request data is a list
-#         if not isinstance(request.data, list):
-#             return Response({"error": "Expected a list of assignments"}, status=status.HTTP_400_BAD_REQUEST)
-
-#         serializer = BulkAssignedCylinderSerializer(data=request.data, many=True)
-#         serializer.is_valid(raise_exception=True)
-
-#         # Process each assignment
-#         assignments = []
-#         for item in serializer.validated_data:
-#             sales_team = item['sales_team']
-#             cylinder_store = item['cylinder']
-#             new_quantity = item['assigned_quantity']
-
-#             # Check if an assignment already exists for this sales team and cylinder
-#             existing_assignment = AssignedCylinders.objects.filter(
-#                 sales_team=sales_team,
-#                 cylinder=cylinder_store
-#             ).first()
-
-#             if existing_assignment:
-#                 # Update the assigned quantity
-#                 existing_assignment.assigned_quantity += new_quantity
-#                 existing_assignment.filled += new_quantity
-#                 existing_assignment.save()
-#             else:
-#                 # Create a new assignment
-#                 existing_assignment = AssignedCylinders.objects.create(
-#                     creator=request.user,
-#                     sales_team=sales_team,
-#                     cylinder=cylinder_store,
-#                     assigned_quantity=new_quantity,
-#                     filled=new_quantity
-#                 )
-
-#             # Reduce the filled quantity in CylinderStore
-#             if cylinder_store.filled >= new_quantity:
-#                 cylinder_store.filled -= new_quantity
-#                 cylinder_store.save()
-#             else:
-#                 raise serializers.ValidationError(
-#                     f"Not enough filled cylinders available. Current filled: {cylinder_store.filled}"
-#                 )
-
-#             assignments.append(existing_assignment)
-
-#         # Serialize and return the created or updated assignments
-#         response_data = [
-#             {
-#                 "id": assignment.id,
-#                 "sales_team": assignment.sales_team.id,
-#                 "cylinder": assignment.cylinder.id,
-#                 "assigned_quantity": assignment.assigned_quantity,
-#                 "date_assigned": assignment.date_assigned,
-#             }
-#             for assignment in assignments
-#         ]
-
-#         return Response(response_data, status=status.HTTP_201_CREATED)
     
 class BulkAssignCylinderView(APIView):
     def post(self, request):
@@ -1214,7 +1224,6 @@ class AssignedCylindersListView(APIView):
 
 class AssingnedCylindersLost(APIView):
     def post(self, request):
-        print('data lost ', request.data)
         try:
             # Extract sales team and cylinder loss details
             sales_team_id = request.data.get('sales_team_id')
@@ -1224,6 +1233,7 @@ class AssingnedCylindersLost(APIView):
                 return Response({"error": "Sales team ID and losses are required."}, status=status.HTTP_400_BAD_REQUEST)
 
             for loss in losses:
+                employee_id = loss.get('employee_id')
                 cylinder_id = loss.get('cylinder_id')
                 filled_lost = loss.get('filled_lost', 0)
                 empties_lost = loss.get('empties_lost', 0)
@@ -1241,6 +1251,60 @@ class AssingnedCylindersLost(APIView):
                     assigned_cylinder.empties_lost += empties_lost
                     assigned_cylinder.save()
 
+
+                    CylinderLost.objects.create(
+                        employee_id=employee_id,
+                        cylinder=assigned_cylinder,
+                        number_of_filled_cylinder=filled_lost,
+                        number_of_empty_cylinder=empties_lost
+                    )
+
+                
+            # Serialize and return the updated data
+            updated_cylinders = AssignedCylinders.objects.filter(sales_team_id=sales_team_id, transaction_complete=False)
+            serializer = AssignedCylinderSerializerrr(updated_cylinders, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AssingnedCylindersLessPay(APIView):
+    def post(self, request):
+        try:
+            # Extract sales team and cylinder loss details
+            sales_team_id = request.data.get('sales_team_id')
+            lesses = request.data.get('lesses', [])
+
+            if not sales_team_id or not lesses:
+                return Response({"error": "Sales team ID and lesses are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+            for less in lesses:
+                employee_id = less.get('employee_id')
+                cylinder_id = less.get('cylinder_id')
+                less = less.get('less_pay', 0)
+                
+
+                # Update assigned cylinder record
+                assigned_cylinder = AssignedCylinders.objects.filter(
+                    sales_team_id=sales_team_id,
+                    cylinder_id=cylinder_id,
+                    transaction_complete=False
+                ).first()
+
+                if assigned_cylinder:
+                    assigned_cylinder.less_pay += less
+                    # assigned_cylinder.empties += less
+                    assigned_cylinder.save()
+
+
+                    CylinderLessPay.objects.create(
+                        employee_id=employee_id,
+                        cylinder=assigned_cylinder,
+                        cylinders_less_pay = less,
+                    )
+
+                
             # Serialize and return the updated data
             updated_cylinders = AssignedCylinders.objects.filter(sales_team_id=sales_team_id, transaction_complete=False)
             serializer = AssignedCylinderSerializerrr(updated_cylinders, many=True)
@@ -1263,7 +1327,7 @@ class ReturnAssignedCylindersView(APIView):
                 
                 if not assigned_cylinder.transaction_complete:
                     # Return cylinders and capture returned values
-                    filled, empties, spoiled, filled_lost, empties_lost = assigned_cylinder.return_cylinders()
+                    filled, empties, spoiled, filled_lost, empties_lost, less_pay = assigned_cylinder.return_cylinders()
                     updated_cylinders.append(assigned_cylinder)
 
                     # Create a return receipt for the completed transaction
@@ -1274,6 +1338,7 @@ class ReturnAssignedCylindersView(APIView):
                         empties=empties,
                         filled_lost=filled_lost,
                         empties_lost=empties_lost,
+                        less_pay = less_pay,
                         spoiled=spoiled,
                     )
 
@@ -1288,23 +1353,20 @@ class ReturnAssignedCylindersView(APIView):
 
 class ReturnAllAssignedCylindersView(APIView):
     def post(self, request):
-        print('data ', request.data)
         serializer = ReturnCylindersSerializer(data=request.data, many=True, partial=True)
         
         serializer.is_valid(raise_exception=True)
-        print('serilized data ', serializer.validated_data)
 
         updated_cylinders = []
 
         for assignment in serializer.validated_data:
-            print("Errors:", serializer.errors)
-            print('assigned cylinder id ', assignment)
+          
             try:
                 assigned_cylinder = AssignedCylinders.objects.get(id=assignment['id'])
                 # return_filled = assignment.get('return_filled', False) 
                 if not assigned_cylinder.transaction_complete:
                     # assigned_cylinder.return_all_cylinders()
-                    filled, empties, spoiled, filled_lost, empties_lost  = assigned_cylinder.return_all_cylinders()
+                    filled, empties, spoiled, filled_lost, empties_lost, less_pay  = assigned_cylinder.return_all_cylinders()
                     updated_cylinders.append(assigned_cylinder)
 
                     # Create a return receipt for the completed transaction
@@ -1316,6 +1378,7 @@ class ReturnAllAssignedCylindersView(APIView):
                         filled_lost=filled_lost,
                         empties_lost=empties_lost,
                         spoiled=spoiled,
+                        less_pay = less_pay
                     )
 
             except AssignedCylinders.DoesNotExist:
@@ -1326,6 +1389,26 @@ class ReturnAllAssignedCylindersView(APIView):
         response_serializer = ReturnCylindersSerializer(updated_cylinders, many=True)
         return Response(response_serializer.data, status=status.HTTP_200_OK)
 
+class DefaultedCylinders(APIView):
+    def get(self, request, employee_id):
+        # employee = request.query_params.get('employee_id')
+        
+        # if employee:
+        lost_cylinders = CylinderLost.objects.filter(employee = employee_id,  resolved = False)
+
+        serialize = LostCylindersSerializer(lost_cylinders, many=True)
+        return Response(serialize.data, status=status.HTTP_200_OK)
+    
+class DefaultedCylindersLessPay(APIView):
+    def get(self, request, employee_id):
+        # employee = request.query_params.get('employee_id')
+        
+        # if employee:
+        lost_cylinders = CylinderLessPay.objects.filter(employee = employee_id, resolved = False)
+
+        serialize = LessPayCylindersSerializer(lost_cylinders, many=True)
+        return Response(serialize.data, status=status.HTTP_200_OK)
+    
 
 class MarkPrintCompleteView(APIView):
     def post(self, request):
@@ -1338,6 +1421,20 @@ class MarkPrintCompleteView(APIView):
         # Mark print_complete as True for the matching records
         # ReturnClylindersReciept.objects.filter(sales_team_id=sales_team_id, print_complete=False).update(print_complete=True)
         AssignedCylindersRecipt.objects.filter(sales_team_id=sales_team_id, print_complete=False).update(print_complete=True)
+
+        return Response({"message": "Print status successfully updated."}, status=status.HTTP_200_OK)
+
+class MarkPrintOthersCompleteView(APIView):
+    def post(self, request):
+        sales_team_id = request.data.get("sales_team_id")
+
+        # Ensure the sales_team_id is provided
+        if not sales_team_id:
+            return Response({"error": "Sales team ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Mark print_complete as True for the matching records
+        # ReturnClylindersReciept.objects.filter(sales_team_id=sales_team_id, print_complete=False).update(print_complete=True)
+        AssignedOtherProductRecipt.objects.filter(sales_team_id=sales_team_id, print_complete=False).update(print_complete=True)
 
         return Response({"message": "Print status successfully updated."}, status=status.HTTP_200_OK)
 
@@ -1354,6 +1451,91 @@ class MarkPrintReturnCompleteView(APIView):
         # AssignedCylindersRecipt.objects.filter(sales_team_id=sales_team_id, print_complete=False).update(print_complete=True)
 
         return Response({"message": "Print status successfully updated."}, status=status.HTTP_200_OK)
+
+
+
+
+class BulkAssignOtherProductsView(APIView):
+    def post(self, request):
+        
+        if not isinstance(request.data, list):
+            return Response({"error": "Expected a list of products"}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = BulkAssignedOtherProductsSerializer(data=request.data, many=True)
+        serializer.is_valid(raise_exception=True)
+
+        # Process each assignment
+        assignments = []
+        for item in serializer.validated_data:
+            sales_team = item['sales_team']
+            product_store = item['product']
+            new_quantity = item['assigned_quantity']
+
+            # Check if an assignment already exists for this sales team and cylinder
+            existing_assignment = AssignedOtherProducts.objects.filter(
+                sales_team = sales_team,
+                product = product_store
+            ).exclude(transaction_complete=True).first()
+
+            if existing_assignment:
+                # Update the assigned quantity for incomplete transactions
+                existing_assignment.assigned_quantity += new_quantity
+                # existing_assignment.filled += new_quantity
+                existing_assignment.save()
+            else:
+                # Create a new assignment if no incomplete transaction exists
+                existing_assignment = AssignedOtherProducts.objects.create(
+                    creator=request.user,
+                    sales_team=sales_team,
+                    product = product_store,
+                    assigned_quantity=new_quantity,
+                    
+                )
+
+            # Reduce the filled quantity in CylinderStore
+            if product_store.quantity >= new_quantity:
+                product_store.quantity -= new_quantity
+                product_store.save()
+            else:
+                raise serializers.ValidationError(
+                    f"Not enough filled product available. Current number is: {product_store.quantity}"
+                )
+
+            assignments.append(existing_assignment)
+            AssignedOtherProductRecipt.objects.create(
+                sales_team=sales_team,
+                product = product_store,
+                assigned_quantity=new_quantity
+            )
+
+
+        # Serialize and return the created or updated assignments
+        response_data = [
+            {
+                "id": assignment.id,
+                "sales_team": assignment.sales_team.id,
+                "product": assignment.product.id,
+                "assigned_quantity": assignment.assigned_quantity,
+                "date_assigned": assignment.date_assigned,
+            }
+            for assignment in assignments
+        ]
+
+        return Response(response_data, status=status.HTTP_201_CREATED)
+
+class OtherProductsRecietPrint(APIView):
+    def get(self, request):
+        # Optionally filter by sales team if provided
+        sales_team_id = request.query_params.get('sales_team')
+        if sales_team_id:
+            assigned_product = AssignedOtherProductRecipt.objects.filter(sales_team_id=sales_team_id, print_complete=False)
+        else:
+            assigned_product = AssignedOtherProductRecipt.objects.all()
+
+        serializer = AssignedOtherProductReceiptSerializer(assigned_product, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
 
 class ViewAllSales(APIView):
     def get(self, request):

@@ -12,6 +12,7 @@ urlpatterns = [
     path('products/', views.product_func, name='product'),
     path('addcustomer/', views.add_customer, name='add-customer'),
     path('recordsales/', views.record_sales, name='record-sales'),
+    path('recordOtherssales/', views.record_others_products_sales, name='record-sales'),
     path('employees/', views.all_employees, name='all-employees'),
     path('assignedcylider/', views.assignedProduct, name='assigned-cylinder'),
     path('assignedproduct/', views.assignedOtherProduct, name='assigned-product'),
@@ -31,6 +32,7 @@ urlpatterns = [
     path('assign-cylinders/', views.BulkAssignCylinderView.as_view(), name='assign-cylinders'),
     path('the-assigned-cylinders/', views.AssignedCylindersListView.as_view(), name='assigned-cylinders-list'),
     path('print-assigned-cylinders/', views.AssignedCylindersPrintableView.as_view(), name='assigned-cylinders-list'),
+    path('print-assigned-otherproduct/', views.OtherProductsRecietPrint.as_view(), name='assigned-product-list'),
     path('return-assigned-cylinders/', views.ReturnAssignedCylindersView.as_view(), name='return-assigned-cylinders'),
     path('return-all-assigned-cylinders/', views.ReturnAllAssignedCylindersView.as_view(), name='return-all-assigned-cylinders'),
     path('after-return/', views.ReturnCylindersPrintableView.as_view()),
@@ -46,6 +48,11 @@ urlpatterns = [
     path('update-status/<str:employee_id>/', views.update_employee_status),
     path('clear_debt/<str:pk>/', views.DebtOperation.as_view()),
     path('mark-print-complete/', views.MarkPrintCompleteView.as_view(), name='mark-print-complete'),
+    path('mark-print-complete-others/', views.MarkPrintOthersCompleteView.as_view(), name='mark-print-complete'),
     path('mark-print-return-complete/', views.MarkPrintReturnCompleteView.as_view(), name='mark-print-return-complete'),
-    path('report-cylinder-losses/', views.AssingnedCylindersLost.as_view())
+    path('report-cylinder-losses/', views.AssingnedCylindersLost.as_view()),
+    path('report-less_pay/', views.AssingnedCylindersLessPay.as_view()),
+    path('defaults/<str:employee_id>/', views.DefaultedCylinders.as_view()),
+    path('less-pay/<str:employee_id>/', views.DefaultedCylindersLessPay.as_view()),
+    path('assign-others/', views.BulkAssignOtherProductsView.as_view())
 ]

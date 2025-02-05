@@ -163,6 +163,7 @@ class AssignedCylinders(models.Model):
     complete_sale = models.PositiveIntegerField(default=0)
     refill_sale = models.PositiveIntegerField(default=0)
     missing_cylinder = models.PositiveIntegerField(default=0)
+    less_pay = models.PositiveIntegerField(default=0)
     transaction_complete = models.BooleanField(default=False)
     date_assigned = models.DateTimeField(auto_now_add=True)
 
@@ -173,11 +174,12 @@ class AssignedCylinders(models.Model):
         filled_lost_returned = self.filled_lost
         empties_lost_returned = self.empties_lost
         spoiled_returned = self.spoiled
+        less_pay_returned = self.less_pay
 
         # Update CylinderStore counts
-        self.assigned_quantity == (self.filled - self.filled_lost)
+        self.assigned_quantity == (self.filled - self.filled_lost - self.less_pay)
         self.cylinder.spoiled += self.spoiled
-        self.cylinder.empties += (self.empties - self.empties_lost)
+        self.cylinder.empties += (self.empties - self.empties_lost + self.less_pay)
         self.cylinder.filled -= self.filled_lost
         self.cylinder.save()
 
@@ -187,9 +189,10 @@ class AssignedCylinders(models.Model):
         self.empties = 0
         self.empties_lost = 0
         self.filled_lost = 0
+        self.less_pay = 0
         self.save()
 
-        return filled_returned, empties_returned, spoiled_returned, filled_lost_returned, empties_lost_returned
+        return filled_returned, empties_returned, spoiled_returned, filled_lost_returned, empties_lost_returned, less_pay_returned
 
 
 
@@ -199,11 +202,12 @@ class AssignedCylinders(models.Model):
         filled_lost_returned = self.filled_lost
         empties_lost_returned = self.empties_lost
         spoiled_returned = self.spoiled
+        less_pay_returned = self.less_pay
 
         # Update CylinderStore counts
-        self.cylinder.filled += (self.filled - self.filled_lost)
+        self.cylinder.filled += (self.filled - self.filled_lost - self.less_pay)
         self.cylinder.spoiled += self.spoiled
-        self.cylinder.empties += (self.empties - self.empties_lost)
+        self.cylinder.empties += (self.empties - self.empties_lost + self.less_pay)
         self.cylinder.save()
 
         # Mark transaction as complete
@@ -214,9 +218,10 @@ class AssignedCylinders(models.Model):
         self.empties_lost = 0
         self.filled_lost = 0
         self.assigned_quantity = 0
+        self.less_pay = 0
         self.save()
 
-        return filled_returned, empties_returned, spoiled_returned, empties_lost_returned, filled_lost_returned
+        return filled_returned, empties_returned, spoiled_returned, empties_lost_returned, filled_lost_returned, less_pay_returned
 
 
 class ReturnClylindersReciept(models.Model):
@@ -225,6 +230,7 @@ class ReturnClylindersReciept(models.Model):
     filled = models.PositiveIntegerField(default=0)
     empties = models.PositiveIntegerField(default=0)
     spoiled = models.PositiveIntegerField(default=0)
+    less_pay = models.PositiveIntegerField(default=0)
     
     empties_lost = models.PositiveIntegerField(default=0)
     filled_lost = models.PositiveIntegerField(default=0)
@@ -250,7 +256,6 @@ class AssignedCylindersRecipt(models.Model):
 
 
 
-
 class AssignedOtherProducts(models.Model):
     creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     sales_team = models.ForeignKey(SalesTeam, on_delete=models.CASCADE, related_name='other_products_salesTeam')
@@ -265,10 +270,41 @@ class AssignedOtherProducts(models.Model):
 
 
 
+class AssignedOtherProductRecipt(models.Model):
+    sales_team = models.ForeignKey(SalesTeam, on_delete=models.SET_NULL, null=True, blank=True)
+    product = models.ForeignKey(OtherProducts, on_delete=models.SET_NULL, null=True, blank=True)
+    assigned_quantity = models.PositiveIntegerField(default=0)
+    print_complete = models.BooleanField(default=False)
+    date_assigned = models.DateTimeField(auto_now_add=True)
+
+    # def __str__(self):
+    #     return self.assigned_quantity
 
 
 
-    
+
+class CylinderLost(models.Model):
+    employee = models.ForeignKey(Employees, on_delete=models.SET_NULL, null=True, blank=True)
+    cylinder = models.ForeignKey(AssignedCylinders, on_delete=models.SET_NULL, null=True, blank=True)
+    number_of_empty_cylinder = models.PositiveIntegerField(default=0)
+    number_of_filled_cylinder = models.PositiveIntegerField(default=0)
+    resolved = models.BooleanField(default=False)
+    date_lost = models.DateTimeField(auto_now_add=True)
+
+    # def __str__(Self):
+    #     return Self.employee
+
+class CylinderLessPay(models.Model):
+    employee = models.ForeignKey(Employees, on_delete=models.SET_NULL, null=True, blank=True)
+    cylinder = models.ForeignKey(AssignedCylinders, on_delete=models.SET_NULL, null=True, blank=True)
+    cylinders_less_pay = models.PositiveIntegerField(default=0)
+    resolved = models.BooleanField(default=False)
+    date_lost = models.DateTimeField(auto_now_add=True)
+
+    # def __str__(self):
+    #     return self.employee
+
+
 class Customers(models.Model):
     WHOLESALE = "WHOLESALE"
     RETAIL = "RETAIL"
@@ -330,13 +366,53 @@ class SalesTab(models.Model):
     
     def __str__(self):
         return f'{self.customer.name} bought {self.quantity}'
-        
+
+class OtherProductsSalesTab(models.Model):
+    WHOLESALE = "WHOLESALE"
+    RETAIL = "RETAIL"
+    SALES_CHOICES = [
+        (WHOLESALE, "Wholesale"),
+        (RETAIL, "Retail"),
+    ]
+    sales_person = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    sales_team = models.ForeignKey(SalesTeam, on_delete=models.CASCADE, null=True, blank=True)
+    customer = models.ForeignKey(Customers, on_delete=models.CASCADE, related_name='customer_other_products_sales' )
+    product = models.ForeignKey(AssignedOtherProducts, on_delete=models.CASCADE, null=True, blank=True)
+    store_product = models.ForeignKey(OtherProducts, on_delete=models.CASCADE, null=True, blank=True)
+    quantity = models.PositiveIntegerField(default=1)
+    sales_choice = models.CharField(choices=SALES_CHOICES, max_length=200, null=True, blank=True)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    partial_payment_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0,  null=True, blank=True)
+    debt_amount = models.PositiveIntegerField(blank=True, null=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    is_fully_paid = models.BooleanField(default=False)
+    expected_date_to_repay = models.DateField(blank=True, null=True)
+    admin_payment_verified = models.BooleanField(default=False)
+    date_sold = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f'{self.customer.name} bought {self.quantity}'
     
 class Dbts(models.Model):
     # authorized_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     creator = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
     sales_team = models.ForeignKey(SalesTeam, on_delete=models.SET_NULL, null=True, blank=True)
     customer = models.ForeignKey(Customers, on_delete=models.SET_NULL, null=True, blank=True, related_name='customer_debt')
+    sales_tab = models.ForeignKey(SalesTab, on_delete=models.SET_NULL, null=True, blank=True)
+    amount = models.IntegerField()
+    date_given = models.DateField(auto_now_add=True)
+    expected_date_to_repay = models.DateField()
+    cleared = models.BooleanField(default=False)
+    
+    def __str__(self):
+        return f'{self.customer.name} has a debt of {self.amount}'
+    
+    
+class OtherProductsDbts(models.Model):
+    # authorized_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    creator = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
+    sales_team = models.ForeignKey(SalesTeam, on_delete=models.SET_NULL, null=True, blank=True)
+    customer = models.ForeignKey(Customers, on_delete=models.SET_NULL, null=True, blank=True, related_name='customerdebt')
     sales_tab = models.ForeignKey(SalesTab, on_delete=models.SET_NULL, null=True, blank=True)
     amount = models.IntegerField()
     date_given = models.DateField(auto_now_add=True)
