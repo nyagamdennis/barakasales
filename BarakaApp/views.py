@@ -1199,8 +1199,8 @@ class ReturnCylindersPrintableView(APIView):
         sales_team_id = request.query_params.get('sales_team')
         if sales_team_id:
             return_cylinders = ReturnClylindersReciept.objects.filter(sales_team_id=sales_team_id, print_complete=False)
-        else:
-            return_cylinders = ReturnClylindersReciept.objects.all()
+        # else:
+        #     return_cylinders = ReturnClylindersReciept.objects.all()
         
         serializer = ReturnCylinderReceiptSerializer(return_cylinders, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
