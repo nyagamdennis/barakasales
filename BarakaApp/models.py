@@ -169,7 +169,7 @@ class AssignedCylinders(models.Model):
 
 
     def return_cylinders(self):
-        filled_returned = self.filled
+        filled_returned = (self.filled - self.filled_lost)
         empties_returned = self.empties
         filled_lost_returned = self.filled_lost
         empties_lost_returned = self.empties_lost
