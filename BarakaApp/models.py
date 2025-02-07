@@ -177,7 +177,8 @@ class AssignedCylinders(models.Model):
         less_pay_returned = self.less_pay
 
         # Update CylinderStore counts
-        self.filled -= self.filled_lost
+        self.filled -= (self.filled_lost + self.less_pay)
+        # self.filled -= self.less_pay
         self.assigned_quantity = (self.filled - self.filled_lost - self.less_pay)
         self.cylinder.spoiled += self.spoiled
         self.cylinder.empties += (self.empties - self.empties_lost + self.less_pay)
