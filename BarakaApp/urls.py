@@ -54,5 +54,7 @@ urlpatterns = [
     path('report-less_pay/', views.AssingnedCylindersLessPay.as_view()),
     path('defaults/<str:employee_id>/', views.DefaultedCylinders.as_view()),
     path('less-pay/<str:employee_id>/', views.DefaultedCylindersLessPay.as_view()),
-    path('assign-others/', views.BulkAssignOtherProductsView.as_view())
+    path('assign-others/', views.BulkAssignOtherProductsView.as_view()),
+    path('cylinder-lost/<int:pk>/resolve/', views.resolve_cylinder_lost, name='resolve_cylinder_lost'),
+    path('cylinder-less_pay/<int:pk>/resolve/', views.resolve_cylinder_lessPay, name='resolve_cylinder_lost'),
 ]

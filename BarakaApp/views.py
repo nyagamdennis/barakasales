@@ -1271,6 +1271,7 @@ class AssingnedCylindersLost(APIView):
 
 class AssingnedCylindersLessPay(APIView):
     def post(self, request):
+       
         try:
             # Extract sales team and cylinder loss details
             sales_team_id = request.data.get('sales_team_id')
@@ -1408,7 +1409,38 @@ class DefaultedCylindersLessPay(APIView):
 
         serialize = LessPayCylindersSerializer(lost_cylinders, many=True)
         return Response(serialize.data, status=status.HTTP_200_OK)
-    
+
+
+@api_view(['PATCH'])
+def resolve_cylinder_lost(request, pk):
+    try:
+        # Retrieve the cylinder loss instance by primary key
+        cylinder_lost = CylinderLost.objects.get(pk=pk)
+    except CylinderLost.DoesNotExist:
+        return Response({"error": "CylinderLost not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    # Directly update and save the resolved status
+    cylinder_lost.resolved = True
+    cylinder_lost.save()
+
+    return Response({"message": f"Cylinder loss {pk} resolved successfully."})
+  
+
+
+@api_view(['PATCH'])
+def resolve_cylinder_lessPay(request, pk):
+    try:
+        # Retrieve the cylinder loss instance by primary key
+        cylinder_less_pay = CylinderLessPay.objects.get(pk=pk)
+    except CylinderLessPay.DoesNotExist:
+        return Response({"error": "CylinderLess pay not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    # Directly update and save the resolved status
+    cylinder_less_pay.resolved = True
+    cylinder_less_pay.save()
+
+    return Response({"message": f"Cylinder less pay {pk} resolved successfully."})
+  
 
 class MarkPrintCompleteView(APIView):
     def post(self, request):

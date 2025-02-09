@@ -886,3 +886,17 @@ class SalesRecordSerializer(serializers.ModelSerializer):
                 "expected_date_to_repay": debt.expected_date_to_repay,
             }
         return None
+
+
+
+
+class CylinderLostResolveSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CylinderLost
+        fields = ['resolved']
+
+    def update(self, instance, validated_data):
+        """Mark a CylinderLost instance as resolved."""
+        instance.resolved = validated_data.get('resolved', instance.resolved)
+        instance.save()
+        return instance
