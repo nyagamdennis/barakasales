@@ -145,12 +145,12 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',
-    'https://barakagaspoint.co.ke',
-    'https://baraka-sales.vercel.app'
-]
-
+# CORS_ALLOWED_ORIGINS = [
+#     'http://localhost:5173',
+#     'https://barakagaspoint.co.ke',
+#     'https://baraka-sales.vercel.app'
+# ]
+CORS_ALLOW_ALL_ORIGINS: True
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
