@@ -4,8 +4,8 @@ from django.db import models
 
 
 class MpesaMessages(models.Model):
-    transaction_code = models.CharField(max_length=200)
-    amount = models.CharField(max_length=200)
+    transaction_code = models.CharField(max_length=200, unique=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
     name = models.CharField(max_length=200)
     phone = models.CharField(max_length=200)
     date = models.DateField()

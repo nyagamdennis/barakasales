@@ -31,7 +31,8 @@ ALLOWED_HOSTS = [
     '127.0.0.1',
     'localhost:3000',
     'localhost:5173',
-    'barakagas.pythonanywhere.com'
+    'barakagas.pythonanywhere.com',
+    'bbbf-102-215-12-242.ngrok-free.app'
 ]
 
 
