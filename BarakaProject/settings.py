@@ -26,13 +26,13 @@ SECRET_KEY = 'django-insecure-hun38i=qr#@p-5l4cizf@3jjvf)ptdewqkq%6-s-q3ux4lv@0o
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-# ALLOWED_HOSTS = [
-#     # 'murildennis.pythonanywhere.com',
-#     # '127.0.0.1',
-#     # 'localhost:3000',
-#     # 'localhost:5173',
-#     # 'barakagas.pythonanywhere.com'
-# ]
+ALLOWED_HOSTS = [
+    'murildennis.pythonanywhere.com',
+    '127.0.0.1',
+    'localhost:3000',
+    'localhost:5173',
+    'barakagas.pythonanywhere.com'
+]
 
 
 # Application definition
@@ -145,11 +145,11 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-# CORS_ALLOWED_ORIGINS = [
-#     'http://localhost:5173',
-#     'https://barakagaspoint.co.ke',
-#     'https://baraka-sales.vercel.app'
-# ]
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:5173',
+    'https://barakagaspoint.co.ke',
+    'https://baraka-sales.vercel.app'
+]
 CORS_ALLOW_ALL_ORIGINS: True
 
 REST_FRAMEWORK = {
