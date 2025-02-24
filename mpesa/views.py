@@ -20,7 +20,7 @@ class mpesatransactions(APIView):
     
 
     def post(self, request):
-
+        print('data is ', request.data)
         if isinstance(request.data, list):  # Check if data is a list
             serializer = MpesaMessagesSerializers(data=request.data, many=True)
         else:
@@ -32,5 +32,5 @@ class mpesatransactions(APIView):
                 {"message": f"{len(serializer.data)} transactions saved successfully!", "data": serializer.data}, 
                 status=status.HTTP_201_CREATED
             )
-        
+        print('error is ', serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
