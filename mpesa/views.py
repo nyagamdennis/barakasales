@@ -21,10 +21,16 @@ class mpesatransactions(APIView):
 
     def post(self, request):
 
-        serializer = MpesaMessagesSerializers(data=request.data)
+        if isinstance(request.data, list):  # Check if data is a list
+            serializer = MpesaMessagesSerializers(data=request.data, many=True)
+        else:
+            serializer = MpesaMessagesSerializers(data=[request.data], many=True)  # Convert single item to a list
 
         if serializer.is_valid():
             serializer.save()
-            return Response({"message": "Transaction saved successfully!", "data": serializer.data}, status=status.HTTP_201_CREATED)
+            return Response(
+                {"message": f"{len(serializer.data)} transactions saved successfully!", "data": serializer.data}, 
+                status=status.HTTP_201_CREATED
+            )
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
