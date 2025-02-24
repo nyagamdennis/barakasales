@@ -1928,3 +1928,8 @@ class DebtOperation(APIView):
             {"message": f"Debt {pk} deleted successfully."},
             status=status.HTTP_204_NO_CONTENT
         )
+    
+
+class EmployeeDetails(APIView):
+    def get(self, request, pk):
+        employee = Employees.objects.get(pk=pk)

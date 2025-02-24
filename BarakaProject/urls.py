@@ -23,6 +23,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('BarakaApp.urls')),
     path('users/', include('users.urls')),
+    path('mpesa/', include('mpesa.urls')),
 ]
 
 if settings.DEBUG:
