@@ -24,18 +24,26 @@ class mpesatransactions(APIView):
             return Response({"error": "Expected a list of transactions"}, status=status.HTTP_400_BAD_REQUEST)
 
         processed_data = []
+        duplicate_count = 0
+        new_count = 0
+
         for item in request.data:
             try:
-                # Ensure all fields exist in each transaction
+                # Ensure all required fields exist
                 if not all(key in item for key in ["transactionCode", "amount", "senderName", "phoneNumber", "date"]):
                     return Response({"error": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)
 
-                # Convert 'date' from 'DD/MM/YY' to 'YYYY-MM-DD'
+                # Convert date format (DD/MM/YY → YYYY-MM-DD)
                 date_obj = datetime.strptime(item["date"], "%d/%m/%y").date()
-                formatted_date = date_obj.strftime("%Y-%m-%d")  # Convert to 'YYYY-MM-DD'
+                formatted_date = date_obj.strftime("%Y-%m-%d")
 
-                # Remove commas from amount (e.g., '1,000.00' -> '1000.00')
+                # Remove commas from amount
                 cleaned_amount = item["amount"].replace(",", "")
+
+                # Check for duplicate transaction
+                if MpesaMessages.objects.filter(transaction_code=item["transactionCode"]).exists():
+                    duplicate_count += 1
+                    continue  # Skip saving
 
                 processed_data.append({
                     "transaction_code": item["transactionCode"],
@@ -44,17 +52,18 @@ class mpesatransactions(APIView):
                     "phone": item["phoneNumber"],
                     "date": formatted_date
                 })
+                new_count += 1
 
             except ValueError as e:
                 return Response({"error": f"Invalid data format: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer = MpesaMessagesSerializers(data=processed_data, many=True)
+        # Ensure a response is always returned
+        if processed_data:
+            serializer = MpesaMessagesSerializers(data=processed_data, many=True)
+            if serializer.is_valid():
+                serializer.save()
 
-        if serializer.is_valid():
-            serializer.save()
-            return Response(
-                {"message": f"{len(serializer.data)} transactions saved successfully!", "data": serializer.data}, 
-                status=status.HTTP_201_CREATED
-            )
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"message": f"{new_count} new transactions saved, {duplicate_count} duplicates skipped."},
+            status=status.HTTP_201_CREATED
+        )
