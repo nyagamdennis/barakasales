@@ -93,7 +93,9 @@ def add_customer(request):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     else:
         return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
-    
+
+
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -128,8 +130,7 @@ def record_sales(request):
         phone = customer.get('phone', None)
         location = customer.get('location', {}).get('name', '')
 
-        if not name or not phone or not location:
-            print('They are none')
+        if not name  or not location:
             if type_of_sale == "RETAIL":
                 customer['name'] = 'no_name'
                 customer['phone'] = '0700000000'
@@ -150,6 +151,13 @@ def record_sales(request):
         formdata['debt_amount'] = myDict['debt_amount']
         formdata['repayment_date'] = myDict.get('repayment_date', None)
         formdata['total_amount'] = myDict['total_amount']
+        # formdata['mpesa_code'] = myDict['mpesa_code']
+        mpesa_codes = myDict.get('mpesa_code', [])
+        if isinstance(mpesa_codes, list):
+            formdata['mpesa_code'] = ",".join(mpesa_codes)  # Convert to comma-separated string
+        else:
+            formdata['mpesa_code'] = mpesa_codes  # Store as a single string
+        formdata['cash'] = myDict['cash']
         
         formdata['sales_person'] = request.user.id
         formdata['sales_team'] = sales_team
@@ -376,6 +384,16 @@ class AdminMakeSales(APIView):
 def all_employees(request):
     employees = Employees.objects.all()
     serialize = EmployeesSerializer(employees, context={'request': request}, many=True)
+    
+    return Response(serialize.data)
+
+
+        
+    
+@api_view(['GET'])
+def single_employees(request, pk):
+    employees = Employees.objects.get(pk = pk)
+    serialize = EmployeesSerializer(employees, context={'request': request})
     
     return Response(serialize.data)
 
@@ -1228,6 +1246,7 @@ class AssingnedCylindersLost(APIView):
             # Extract sales team and cylinder loss details
             sales_team_id = request.data.get('sales_team_id')
             losses = request.data.get('losses', [])
+            print('Loses ', losses)
 
             if not sales_team_id or not losses:
                 return Response({"error": "Sales team ID and losses are required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -1331,6 +1350,7 @@ class ReturnAssignedCylindersView(APIView):
                     filled, empties, spoiled, filled_lost, empties_lost, less_pay = assigned_cylinder.return_cylinders()
                     updated_cylinders.append(assigned_cylinder)
 
+                    
                     # Create a return receipt for the completed transaction
                     ReturnClylindersReciept.objects.create(
                         sales_team=assigned_cylinder.sales_team,
@@ -1369,13 +1389,13 @@ class ReturnAllAssignedCylindersView(APIView):
                     # assigned_cylinder.return_all_cylinders()
                     filled, empties, spoiled, filled_lost, empties_lost, less_pay  = assigned_cylinder.return_all_cylinders()
                     updated_cylinders.append(assigned_cylinder)
-
+                   
                     # Create a return receipt for the completed transaction
                     ReturnClylindersReciept.objects.create(
                         sales_team=assigned_cylinder.sales_team,
                         cylinder=assigned_cylinder.cylinder,
-                        filled=filled,
-                        empties=empties,
+                        filled = filled-filled_lost-less_pay,
+                        empties=empties+less_pay-empties_lost,
                         filled_lost=filled_lost,
                         empties_lost=empties_lost,
                         spoiled=spoiled,
@@ -1573,6 +1593,14 @@ class ViewAllSales(APIView):
     def get(self, request):
         all_sales = SalesTab.objects.order_by('-date_sold')
 
+
+class ExpensesOperation(APIView):
+    # permission_classes = [IsAuthenticated]
+    def get(self, request, employee_id):
+        expenses = Expenses.objects.filter(employee = employee_id)
+        serialize = ExpensesSerializer(expenses, many=True)
+        return Response(serialize.data, status=status.HTTP_200_OK)
+    
 
 class MyProfiles(APIView):
     permission_classes = [IsAuthenticated]
@@ -1931,5 +1959,8 @@ class DebtOperation(APIView):
     
 
 class EmployeeDetails(APIView):
-    def get(self, request, pk):
+    def get(self, request, pk, employee_id):
         employee = Employees.objects.get(pk=pk)
+
+
+        

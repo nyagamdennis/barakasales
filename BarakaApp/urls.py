@@ -57,4 +57,6 @@ urlpatterns = [
     path('assign-others/', views.BulkAssignOtherProductsView.as_view()),
     path('cylinder-lost/<int:pk>/resolve/', views.resolve_cylinder_lost, name='resolve_cylinder_lost'),
     path('cylinder-less_pay/<int:pk>/resolve/', views.resolve_cylinder_lessPay, name='resolve_cylinder_lost'),
+    path('expenses/<str:employee_id>/', views.ExpensesOperation.as_view()),
+    path('employees/<str:pk>/', views.single_employees, name='single-employees'),
 ]

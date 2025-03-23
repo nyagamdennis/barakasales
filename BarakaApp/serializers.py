@@ -607,6 +607,12 @@ class AssignedCylinderSerializerrr(serializers.ModelSerializer):
     min_retail_selling_price = serializers.IntegerField(source="cylinder.cylinder.min_retail_selling_price", read_only=True)
     min_retail_refil_price = serializers.IntegerField(source="cylinder.cylinder.min_retail_refil_price", read_only=True)
     
+
+    mid_wholesale_selling_price = serializers.IntegerField(source="cylinder.cylinder.mid_wholesale_selling_price", read_only=True)
+    mid_wholesale_refil_price = serializers.IntegerField(source="cylinder.cylinder.mid_wholesale_refil_price", read_only=True)
+    mid_retail_selling_price = serializers.IntegerField(source="cylinder.cylinder.mid_retail_selling_price", read_only=True)
+    mid_retail_refil_price = serializers.IntegerField(source="cylinder.cylinder.mid_retail_refil_price", read_only=True)
+    
     max_wholesale_selling_price = serializers.IntegerField(source="cylinder.cylinder.max_wholesale_selling_price", read_only=True)
     max_wholesale_refil_price = serializers.IntegerField(source="cylinder.cylinder.max_wholesale_refil_price", read_only=True)
     max_retail_selling_price = serializers.IntegerField(source="cylinder.cylinder.max_retail_selling_price", read_only=True)
@@ -641,6 +647,10 @@ class AssignedCylinderSerializerrr(serializers.ModelSerializer):
             "min_wholesale_refil_price",
             "min_retail_selling_price",
             "min_retail_refil_price",
+            "mid_wholesale_selling_price",
+            "mid_wholesale_refil_price",
+            "mid_retail_selling_price",
+            "mid_retail_refil_price",
             "max_wholesale_selling_price",
             "max_wholesale_refil_price",
             "max_retail_selling_price",
@@ -900,3 +910,10 @@ class CylinderLostResolveSerializer(serializers.ModelSerializer):
         instance.resolved = validated_data.get('resolved', instance.resolved)
         instance.save()
         return instance
+    
+
+
+class ExpensesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Expenses
+        fields = '__all__'

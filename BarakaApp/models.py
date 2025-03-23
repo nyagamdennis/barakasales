@@ -51,6 +51,10 @@ class Cylinder(models.Model):
     min_wholesale_refil_price = models.PositiveIntegerField(default=0)
     min_retail_selling_price = models.PositiveIntegerField(default=0)
     min_retail_refil_price = models.PositiveIntegerField(default=0)
+    mid_wholesale_selling_price = models.PositiveIntegerField(default=0)
+    mid_wholesale_refil_price = models.PositiveIntegerField(default=0)
+    mid_retail_selling_price = models.PositiveIntegerField(default=0)
+    mid_retail_refil_price = models.PositiveIntegerField(default=0)
     max_wholesale_selling_price = models.PositiveIntegerField(default=0)
     max_wholesale_refil_price = models.PositiveIntegerField(default=0)
     max_retail_selling_price = models.PositiveIntegerField(default=0)
@@ -94,6 +98,8 @@ class Employees(models.Model):
     profile_image = models.ImageField(upload_to='profile', null=True, blank=True)
     front_id = models.ImageField(upload_to='id_pictures', null=True, blank=True)
     back_id = models.ImageField(upload_to='id_pictures', blank=True, null=True)
+    contract_salary = models.PositiveIntegerField(default=0)
+    date_joined = models.DateField()
     sales_team = models.ForeignKey(
         'SalesTeam',
         on_delete=models.SET_NULL,
@@ -113,6 +119,33 @@ class Employees(models.Model):
         permissions = [
             ("employee_permission", "Can act as an employee")
         ]
+
+
+class Advances(models.Model):
+    employee = models.ForeignKey(Employees, on_delete=models.CASCADE)
+    amount = models.PositiveIntegerField()
+    date_issued = models.DateField()
+
+
+
+class MonthlySalary(models.Model):
+    employee = models.ForeignKey(Employees, on_delete=models.CASCADE)
+    is_paid = models.BooleanField(default=False)
+    amount = models.PositiveIntegerField()
+    payment_date = models.DateField()
+
+
+class Expenses(models.Model):
+    employee = models.ForeignKey(Employees, on_delete=models.CASCADE)
+    amount = models.PositiveIntegerField(default=0)
+    name = models.CharField(max_length=500)
+    checked = models.BooleanField(default=False)
+    date = models.DateTimeField(auto_now_add=True)
+
+
+    def __str__(self) -> str:
+        return self.name
+    
 
 class DefaultedProducts(models.Model):
     employee = models.ForeignKey(Employees, on_delete=models.CASCADE)
@@ -199,6 +232,7 @@ class AssignedCylinders(models.Model):
 
 
     def return_all_cylinders(self):
+        
         filled_returned = self.filled
         empties_returned = self.empties
         filled_lost_returned = self.filled_lost
@@ -206,6 +240,7 @@ class AssignedCylinders(models.Model):
         spoiled_returned = self.spoiled
         less_pay_returned = self.less_pay
 
+        
         # Update CylinderStore counts
         self.cylinder.filled += (self.filled - self.filled_lost - self.less_pay)
         self.cylinder.spoiled += self.spoiled
@@ -223,8 +258,7 @@ class AssignedCylinders(models.Model):
         self.less_pay = 0
         self.save()
 
-        return filled_returned, empties_returned, spoiled_returned, empties_lost_returned, filled_lost_returned, less_pay_returned
-
+        return filled_returned, empties_returned, spoiled_returned, filled_lost_returned,  empties_lost_returned, less_pay_returned
 
 class ReturnClylindersReciept(models.Model):
     sales_team = models.ForeignKey(SalesTeam, on_delete=models.SET_NULL, null=True, blank=True)
@@ -240,8 +274,6 @@ class ReturnClylindersReciept(models.Model):
     print_complete = models.BooleanField(default=False)
     date_collected = models.DateTimeField(auto_now_add=True)
 
-    # def __str__(self):
-    #     return self.empties
 
 class AssignedCylindersRecipt(models.Model):
     sales_team = models.ForeignKey(SalesTeam, on_delete=models.SET_NULL, null=True, blank=True)
@@ -302,6 +334,7 @@ class CylinderLessPay(models.Model):
     cylinders_less_pay = models.PositiveIntegerField(default=0)
     resolved = models.BooleanField(default=False)
     date_lost = models.DateTimeField(auto_now_add=True)
+    date = models.DateTimeField(auto_now_add=True)
 
     # def __str__(self):
     #     return self.employee
@@ -317,7 +350,7 @@ class Customers(models.Model):
     # creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     sales = models.CharField(max_length=200,choices=SALES_CHOICES)
     name = models.CharField(max_length=200)
-    phone = models.IntegerField()
+    phone = models.IntegerField(null=True, blank=True)
     location = models.ForeignKey(Locations, on_delete=models.CASCADE)
     date_aded = models.DateTimeField(auto_now_add=True)
     
@@ -332,7 +365,7 @@ class TypeOfSale(models.Model):
     def __str__(self):
         return self.name
     
-    
+
         
 class SalesTab(models.Model):
     COMPLETESALE = "COMPLETESALE"
@@ -363,11 +396,24 @@ class SalesTab(models.Model):
     exchanged_with_local = models.BooleanField(default=False)
     expected_date_to_repay = models.DateField(blank=True, null=True)
     sales_person_payment_verified = models.BooleanField(default=False)
-    admin_payment_verified = models.BooleanField(default=False)
+    admin_cash_verified = models.BooleanField(default=False)
+    admin_mpesa_verified = models.BooleanField(default=False)
+    mpesa_code = models.JSONField(default=list,null=True, blank=True)
+    cash = models.CharField(max_length=200, null=True, blank=True)
     date_sold = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
         return f'{self.customer.name} bought {self.quantity}'
+
+
+
+class SalesTransaction(models.Model):
+       sales = models.ForeignKey(SalesTab, on_delete=models.SET_NULL, null=True, blank=True)
+       mpesa_code = models.CharField(max_length=200)
+       second_mpesa_code = models.CharField(max_length=200)
+       third_mpesa_code = models.CharField(max_length=200)
+       cash = models.CharField(max_length=200)
+
 
 class OtherProductsSalesTab(models.Model):
     WHOLESALE = "WHOLESALE"
