@@ -937,16 +937,10 @@ class AddNewCylinder(APIView):
         # Check if the gas type exists
         # gas_type, created_gas_type = CylinderType.objects.filter(name=gas_type_name).first()
         gas_type, created_gas_type = CylinderType.objects.get_or_create(name=gas_type_name) 
-        # if not gas_type:
-        #     return Response({'error': 'Gas type not found'}, status=status.HTTP_404_NOT_FOUND)
-
-        # Check if the weight exists
-        # weight, created_weight = CylinderWeight.objects.filter(weight=weight_value).first()
+       
         weight, created_weight = CylinderWeight.objects.get_or_create(weight=weight_value)
         # if not weight:
-        #     return Response({'error': 'Weight not found'}, status=status.HTTP_404_NOT_FOUND)
-
-        # Check if a cylinder with the given gas type and weight exists
+       
         cylinder = Cylinder.objects.filter(gas_type=gas_type, weight=weight).first()
 
         if not cylinder:
@@ -1430,6 +1424,10 @@ class DefaultedCylindersLessPay(APIView):
         serialize = LessPayCylindersSerializer(lost_cylinders, many=True)
         return Response(serialize.data, status=status.HTTP_200_OK)
 
+class PaymentsProcess(APIView):
+    def post(self, request, pk):
+        return Response('Payment process Complete.')
+    
 
 @api_view(['PATCH'])
 def resolve_cylinder_lost(request, pk):
@@ -1444,6 +1442,37 @@ def resolve_cylinder_lost(request, pk):
     cylinder_lost.save()
 
     return Response({"message": f"Cylinder loss {pk} resolved successfully."})
+  
+
+
+@api_view(['PATCH'])
+def return_cylinder_lost(request, pk):
+    try:
+        # Retrieve the cylinder loss instance by primary key
+        cylinder_lost = CylinderLost.objects.get(pk=pk)
+        cylinder_store = cylinder_lost.cylinder.cylinder
+        print('store data found ', cylinder_store.empties)
+        print('cylinder ', cylinder_lost)
+    except CylinderLost.DoesNotExist:
+        return Response({"error": "CylinderLost not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    if cylinder_lost.number_of_empty_cylinder >= 1:
+        cylinder_store.empties += cylinder_lost.number_of_empty_cylinder
+        cylinder_lost.resolved = True
+        cylinder_lost.save()
+        cylinder_store.save()
+        return Response({'message': 'Cylinder returned.'})
+    elif cylinder_lost.number_of_filled_cylinder >= 1:
+        cylinder_store.filled += cylinder_lost.number_of_filled_cylinder
+        cylinder_lost.resolved = True
+        cylinder_lost.save()
+        cylinder_store.save()
+        return Response({'message': 'Cylinder returned.'})
+    # # Directly update and save the resolved status
+    # cylinder_lost.resolved = True
+    # cylinder_lost.save()
+
+    # return Response({"message": f"Cylinder loss {pk} resolved successfully."})
   
 
 
@@ -1714,44 +1743,6 @@ class CheckUserStatusView(APIView):
             "is_verified": is_verified,
             "is_admin": is_admin
         })
-        # user = request.user
-
-        # # Check admin and employee status using permissions
-        # is_admin = user.is_superuser  # Superuser check
-        # is_employee = user.has_perm('auth.is_employee')  # Check for 'is_employee' permission
-
-        # print('is admin', is_admin)
-        # print('is employee', is_employee)
-        # return Response({
-        #     "is_employee": is_employee,
-        #     "is_admin": is_admin
-        # })
-
-# @api_view(['PATCH'])
-# @permission_classes([IsAdminUser])
-# def update_employee_status(request, employee_id):
-   
-#     try:
-#         # Get the employee
-#         employee = Employees.objects.get(id=employee_id)
-
-#         # Get the status field to toggle
-#         status_field = request.data.get('status_field')
-#         if not status_field or not hasattr(employee, status_field):
-#             return Response({"error": "Invalid status field"}, status=status.HTTP_400_BAD_REQUEST)
-
-#         # Toggle the status field
-#         setattr(employee, status_field, not getattr(employee, status_field))
-#         employee.save()
-
-#         # Serialize the updated employee data
-#         serialized_employee = EmployeesSerializer(employee, context={'request': request})
-#         return Response(
-#             {"message": f"{status_field} updated successfully", "employee": serialized_employee.data},
-#             status=status.HTTP_200_OK
-#         )
-#     except Employees.DoesNotExist:
-#         return Response({"error": "Employee not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
 @api_view(['PATCH'])
@@ -1848,61 +1839,6 @@ def update_employee_status(request, employee_id):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# @api_view(['PATCH'])
-# @permission_classes([IsAdminUser])
-# def update_employee_status(request, employee_id):
-#     print('data ', request.data)
-#     try:
-#         # Fetch the employee object
-#         employee = Employees.objects.get(id=employee_id)
-#         user = employee.user
-
-#         # Get the status field to toggle
-#         status_field = request.data.get('status_field')
-#         if not status_field:
-#             return Response({"error": "Invalid status field"}, status=status.HTTP_400_BAD_REQUEST)
-
-#         # Ensure the "is_employee" permission exists
-#         content_type = ContentType.objects.get_for_model(user)
-      
-#         try:
-#             employee_permission, created = Permission.objects.get_or_create(
-#                 codename="is_employee",
-#                 defaults={
-#                 "name": "Can act as employee",
-#                 "content_type": content_type
-#                 }
-#             )
-#         except IntegrityError:
-#             #  Handle the rare case where concurrent creation leads to the same error
-#             employee_permission = Permission.objects.get(
-#                 codename="is_employee",
-#                 content_type=content_type
-#             )
-#         if status_field == "approve":
-#             # Add the "is_employee" permission and activate the user
-#             user.user_permissions.add(employee_permission)
-#             user.is_active = True
-#         elif status_field == "fire":
-#             # Remove the "is_employee" permission and deactivate the user
-#             user.user_permissions.remove(employee_permission)
-#             user.is_active = False
-
-#         # Save the user and employee models
-#         user.save()
-#         employee.save()
-
-#         # Serialize the updated employee data
-#         serialized_employee = EmployeesSerializer(employee, context={'request': request})
-#         return Response(
-#             {"message": f"{status_field} updated successfully", "employee": serialized_employee.data},
-#             status=status.HTTP_200_OK
-#         )
-#     except Employees.DoesNotExist:
-#         return Response({"error": "Employee not found"}, status=status.HTTP_404_NOT_FOUND)
-#     except Permission.DoesNotExist:
-#         return Response({"error": "Permission not found"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 
 @api_view(['PATCH'])
@@ -1964,3 +1900,120 @@ class EmployeeDetails(APIView):
 
 
         
+
+class EmployeeSalary(APIView):
+    def patch(self, request, pk):
+        data = request.data
+        print('salary data ', data.get('contract_salary'))
+        employee = get_object_or_404(Employees, pk=pk)
+        employee.contract_salary = data.get('contract_salary')
+        employee.save()
+
+        serialize = EmployeesSerializer(employee)
+
+        return Response(serialize.data, status=status.HTTP_200_OK)
+    
+
+
+class AdvancesOperation(APIView):
+    def get(self, request, employeeId):
+        advance = Advances.objects.filter(employee=employeeId, resolved=False)
+        serialize = AdvancesSerializer(advance, many=True)
+        return Response(serialize.data, status=status.HTTP_200_OK)
+    
+    def post(self, request, employeeId):
+        serializer = AdvancesSerializer(
+            data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            print(f'This is the error message {serializer.errors}')
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class resolve_advances(APIView):  
+    def patch(self, request, pk):
+        advance = get_object_or_404(Advances, pk=pk)
+        
+        advance.resolved = True
+        advance.save()
+        return Response({"message": f"advance resolved successfully."})
+      
+
+
+
+class CylinderRequested(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request, team_id):
+        employee = request.user.id
+        requests_data = CylinderRequestTransfer.objects.filter(given=False)
+        serializer = CylinderRequestSerializer(requests_data, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+
+
+
+class CylinderRequestClear(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request, team_id):
+        employee = request.user.id
+        requests_data = CylinderRequestTransfer.objects.filter(employee=employee, given=False)
+        serializer = CylinderRequestSerializer(requests_data, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+
+
+class CylinderRequestGet(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request, team_id):
+        # print('data ', pk)
+        employee = request.user.id
+        requests_data = CylinderRequestTransfer.objects.get(employee=employee, given=False, cylinder=team_id)
+        requests_data.delete()
+        return Response({"message": f"Debt deleted successfully."},
+            status=status.HTTP_204_NO_CONTENT)
+    
+
+
+
+class CylinderRequest(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        data = request.data.copy()  # Copy to safely modify
+        
+
+        try:
+            employee = Employees.objects.get(user=request.user.id)  # Get employee linked to user
+        except Employees.DoesNotExist:
+            return Response({"error": "No Employee record found for this user"}, status=status.HTTP_400_BAD_REQUEST)
+
+        requesting_team = employee.sales_team
+        data['requesting_team'] = requesting_team.id if requesting_team else None  
+        data['employee'] = request.user.id  # Assign employee ID from request.user
+
+         # Check if an existing request matches `requesting_team` & `cylinder`
+        existing_request = CylinderRequestTransfer.objects.filter(
+            employee=request.user.id,
+            cylinder_id=data.get('cylinder')
+        ).order_by('-date').first()
+
+        print('existing status ', existing_request.given)
+
+        if existing_request:
+            if not existing_request.given:  # If given == False, just update
+                existing_request.quantity = data.get('quantity', existing_request.quantity)
+                existing_request.save()
+                serializer = CylinderRequestSerializer(existing_request)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
+        # If no existing request or given == True, create a new entry
+        serializer = CylinderRequestSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()  
+            return Response(serializer.data, status=status.HTTP_201_CREATED)  # New record created
+
+        print('Error:', serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

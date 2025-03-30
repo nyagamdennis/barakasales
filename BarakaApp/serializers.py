@@ -917,3 +917,18 @@ class ExpensesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Expenses
         fields = '__all__'
+
+
+    
+
+
+class AdvancesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Advances
+        fields = '__all__'
+
+
+class CylinderRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CylinderRequestTransfer
+        fields = '__all__'

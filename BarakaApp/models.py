@@ -121,10 +121,21 @@ class Employees(models.Model):
         ]
 
 
+class UnaccountedFor(models.Model):
+    employee = models.ForeignKey(Employees, on_delete=models.CASCADE)
+    amount = models.PositiveIntegerField()
+    date = models.DateField()
+    date_added = models.DateTimeField(auto_now_add=True)
+
+# class Defau
+
 class Advances(models.Model):
     employee = models.ForeignKey(Employees, on_delete=models.CASCADE)
     amount = models.PositiveIntegerField()
     date_issued = models.DateField()
+    resolved = models.BooleanField(default=False)
+    date_added = models.DateTimeField(auto_now_add=True)
+
 
 
 
@@ -139,7 +150,7 @@ class Expenses(models.Model):
     employee = models.ForeignKey(Employees, on_delete=models.CASCADE)
     amount = models.PositiveIntegerField(default=0)
     name = models.CharField(max_length=500)
-    checked = models.BooleanField(default=False)
+    resolved = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
 
 
@@ -171,7 +182,6 @@ class SalesTeam(models.Model):
     type_of_sales_team = models.ForeignKey(TypeOfSalesTeam, on_delete=models.CASCADE, null=True, blank=True)
     profile_image = models.ImageField(upload_to='sales_team_profile', null=True, blank=True)
     name = models.CharField(max_length=200)
-    # employees = models.ManyToManyField(Employees, related_name='sales_teams', blank=True)  # Specify a related_name
     date_created = models.DateTimeField(auto_now_add=True)
     
     
@@ -184,6 +194,7 @@ class AssignedCylinders(models.Model):
     sales_team = models.ForeignKey(SalesTeam, on_delete=models.CASCADE, related_name='salesTeam')
     cylinder = models.ForeignKey(CylinderStore, on_delete=models.CASCADE)
     assigned_quantity = models.PositiveIntegerField(default=0)
+    # transfere
     spoiled = models.PositiveIntegerField(default=0)
     filled = models.PositiveIntegerField(default=0)
     empties = models.PositiveIntegerField(default=0)
@@ -259,6 +270,20 @@ class AssignedCylinders(models.Model):
         self.save()
 
         return filled_returned, empties_returned, spoiled_returned, filled_lost_returned,  empties_lost_returned, less_pay_returned
+
+
+class CylinderRequestTransfer(models.Model):
+    requesting_team = models.ForeignKey(SalesTeam, on_delete=models.SET_NULL, null=True, blank=True)
+    employee = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
+    cylinder = models.ForeignKey(AssignedCylinders, on_delete=models.SET_NULL, null=True, blank=True)
+    quantity = models.PositiveIntegerField(default=0)
+    given = models.BooleanField(default=False)
+    quantity_given = models.PositiveIntegerField(default=0)
+    date = models.DateTimeField(auto_now_add=True)
+
+
+
+
 
 class ReturnClylindersReciept(models.Model):
     sales_team = models.ForeignKey(SalesTeam, on_delete=models.SET_NULL, null=True, blank=True)
