@@ -99,7 +99,7 @@ class Employees(models.Model):
     front_id = models.ImageField(upload_to='id_pictures', null=True, blank=True)
     back_id = models.ImageField(upload_to='id_pictures', blank=True, null=True)
     contract_salary = models.PositiveIntegerField(default=0)
-    date_joined = models.DateField()
+    date_joined = models.DateField(null=True, blank=True)
     sales_team = models.ForeignKey(
         'SalesTeam',
         on_delete=models.SET_NULL,

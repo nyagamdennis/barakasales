@@ -2000,7 +2000,6 @@ class CylinderRequest(APIView):
             cylinder_id=data.get('cylinder')
         ).order_by('-date').first()
 
-        print('existing status ', existing_request.given)
 
         if existing_request:
             if not existing_request.given:  # If given == False, just update
@@ -2017,3 +2016,4 @@ class CylinderRequest(APIView):
 
         print('Error:', serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
