@@ -654,7 +654,8 @@ class AssignedCylinderSerializerrr(serializers.ModelSerializer):
             "max_wholesale_selling_price",
             "max_wholesale_refil_price",
             "max_retail_selling_price",
-            "max_retail_refil_price"
+            "max_retail_refil_price",
+            "transfered_cylinder"
         ]
 
 class AssignedCylinderSerializerDefaulted(serializers.ModelSerializer):
@@ -707,7 +708,8 @@ class AssignedCylinderSerializerDefaulted(serializers.ModelSerializer):
             "max_wholesale_selling_price",
             "max_wholesale_refil_price",
             "max_retail_selling_price",
-            "max_retail_refil_price"
+            "max_retail_refil_price",
+            "transfered_cylinder"
         ]
 
 class LostCylindersSerializer(serializers.ModelSerializer):
@@ -929,6 +931,14 @@ class AdvancesSerializer(serializers.ModelSerializer):
 
 
 class CylinderRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CylinderRequestTransfer
+        fields = '__all__'
+
+
+
+class AllCylinderRequestSerializer(serializers.ModelSerializer):
+    requesting_team = SalesTeamSerializer()
     class Meta:
         model = CylinderRequestTransfer
         fields = '__all__'

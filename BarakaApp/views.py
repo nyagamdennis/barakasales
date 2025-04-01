@@ -1947,7 +1947,7 @@ class CylinderRequested(APIView):
     def post(self, request, team_id):
         employee = request.user.id
         requests_data = CylinderRequestTransfer.objects.filter(given=False)
-        serializer = CylinderRequestSerializer(requests_data, many=True)
+        serializer = AllCylinderRequestSerializer(requests_data, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 
@@ -2017,3 +2017,63 @@ class CylinderRequest(APIView):
         print('Error:', serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+
+
+
+
+
+class CylinderRequestedToMe(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        requests_data = CylinderRequestTransfer.objects.filter(given=False)
+        serializer = AllCylinderRequestSerializer(requests_data, many=True)
+        print('all cylinder ', serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+
+
+class ApproveCylinderRequested(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request, cylinder_id):
+        try:
+            cylinder_requested = CylinderRequestTransfer.objects.get(cylinder=cylinder_id)
+        except CylinderRequestTransfer.DoesNotExist:
+            return Response('Does not exist.', status=status.HTTP_404_NOT_FOUND)
+        
+        requesting_team = cylinder_requested.requesting_team
+        quantity = cylinder_requested.quantity
+        
+        try:
+            assigned_cylinder = AssignedCylinders.objects.get(pk=cylinder_id)
+        except AssignedCylinders.DoesNotExist:
+            return Response("Cylinder does not exist.", status=status.HTTP_404_NOT_FOUND)
+        
+        assigned_cylinder.filled -= quantity
+        assigned_cylinder.transfered_cylinder += quantity
+        assigned_cylinder.save()
+        
+        assigned_cylinder_store_id = assigned_cylinder.cylinder
+        try:
+            requesting_team_cylinders = AssignedCylinders.objects.get(sales_team = requesting_team, cylinder = assigned_cylinder_store_id, transaction_complete=False)
+           
+            requesting_team_cylinders.filled += quantity
+            requesting_team_cylinders.save()
+            cylinder_requested.given = True
+            cylinder_requested.save()
+            return Response('ok', status=status.HTTP_201_CREATED)
+        except AssignedCylinders.DoesNotExist:
+            print('Does not exist')
+            new_assignment = AssignedCylinders.objects.create(
+                    creator=cylinder_requested.employee,
+                    sales_team=cylinder_requested.requesting_team,
+                    cylinder=assigned_cylinder.cylinder,
+                    assigned_quantity=quantity,
+                    filled=quantity
+                )
+            cylinder_requested.given = True
+            cylinder_requested.save()
+            return Response('ok', status=status.HTTP_201_CREATED)
+        # serializer = AllCylinderRequestSerializer(requests_data, many=True)
+        # print('all cylinder ', serializer.data)
+        return Response('ok', status=status.HTTP_200_OK)

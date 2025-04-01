@@ -194,7 +194,7 @@ class AssignedCylinders(models.Model):
     sales_team = models.ForeignKey(SalesTeam, on_delete=models.CASCADE, related_name='salesTeam')
     cylinder = models.ForeignKey(CylinderStore, on_delete=models.CASCADE)
     assigned_quantity = models.PositiveIntegerField(default=0)
-    # transfere
+    transfered_cylinder = models.PositiveIntegerField(default=0)
     spoiled = models.PositiveIntegerField(default=0)
     filled = models.PositiveIntegerField(default=0)
     empties = models.PositiveIntegerField(default=0)

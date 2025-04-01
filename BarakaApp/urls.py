@@ -66,4 +66,6 @@ urlpatterns = [
     path('cylinder-request/', views.CylinderRequest.as_view(), name='cylinder-request'),
     path('cylinder-request-get/<str:team_id>/', views.CylinderRequestGet.as_view(), name='cylinder-request-get'),
     path('cylinder-request-clear/<str:team_id>/', views.CylinderRequestClear.as_view(), name='cylinder-request-get'),
+    path('all-request/', views.CylinderRequestedToMe.as_view()),
+    path('approve-request/<str:cylinder_id>/', views.ApproveCylinderRequested.as_view())
 ]
