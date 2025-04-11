@@ -12,7 +12,7 @@ from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.db.utils import IntegrityError
 from users.models import CustomUser
-
+from datetime import date
 
 
 
@@ -28,7 +28,6 @@ def smsSender(users, message):
     sms = africastalking.SMS
     # Use the service synchronously
     response = sms.send(message, users)
-    print(response)
 
 
 
@@ -89,7 +88,6 @@ def add_customer(request):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
-            print(f'This is the error message {serializer.errors}')
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     else:
         return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
@@ -100,9 +98,11 @@ def add_customer(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def record_sales(request):
+    if request.method != 'POST':
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    
     if request.method == 'POST':
-        print('all data ', request.data)
-        print('user ', request.user)
+       
         user_id = request.user
         custom_user_id = user_id.id
         
@@ -120,10 +120,9 @@ def record_sales(request):
 
         # Customer and Sale Info
         
-
+        
         customer = myDict.get('customer', {})
         type_of_sale = customer.get('sales', '')
-        # print('Sales type ', sales_type)
 
         # Assign default customer details if not provided
         name = customer.get('name', '')
@@ -152,12 +151,20 @@ def record_sales(request):
         formdata['repayment_date'] = myDict.get('repayment_date', None)
         formdata['total_amount'] = myDict['total_amount']
         # formdata['mpesa_code'] = myDict['mpesa_code']
-        mpesa_codes = myDict.get('mpesa_code', [])
-        if isinstance(mpesa_codes, list):
-            formdata['mpesa_code'] = ",".join(mpesa_codes)  # Convert to comma-separated string
-        else:
-            formdata['mpesa_code'] = mpesa_codes  # Store as a single string
-        formdata['cash'] = myDict['cash']
+        # mpesa_codes = myDict.get('mpesa_code', [])
+
+        # Ensure `mpesa_code` is stored as JSON, not a string
+        formdata['mpesa_code'] = myDict.get('mpesa_code', [])
+
+        # Ensure numeric values for `cashAmount` and `mpesaAmount`
+        formdata['cashAmount'] = int(myDict.get('cashAmount', 0))
+        formdata['mpesaAmount'] = int(myDict.get('mpesaAmount', 0))
+
+        # if isinstance(mpesa_codes, list):
+        #     formdata['mpesa_code'] = ",".join(mpesa_codes)  # Convert to comma-separated string
+        # else:
+        #     formdata['mpesa_code'] = mpesa_codes  # Store as a single string
+        # formdata['cash'] = myDict['cash']
         
         formdata['sales_person'] = request.user.id
         formdata['sales_team'] = sales_team
@@ -181,7 +188,7 @@ def record_sales(request):
 
         for i, product_data in enumerate(products):
             product_id = product_data.get('id')
-            assigned_quantity = product_data.get('quantity', 0)
+            assigned_quantity = int(product_data.get('quantity', 0))
 
             try:
                 assigned_product = AssignedCylinders.objects.get(id=product_id)
@@ -189,7 +196,9 @@ def record_sales(request):
                 return Response({'error': f'Product with ID {product_id} does not exist'}, status=status.HTTP_400_BAD_REQUEST)
 
             # Check if there's enough quantity for the sale
+            # print('assigned_quantity', type(assigned_quantity))
             if assigned_product.filled < assigned_quantity:
+                
                 return Response(
                     {'error': f'Not enough stock for the product. Ask admin for a restock.'},
                     status=status.HTTP_400_BAD_REQUEST
@@ -224,7 +233,6 @@ def record_sales(request):
                 
                 creator = CustomUser.objects.get(id=request.user.id)  
                 if not formdata['is_fully_paid'] and i == 0:
-                    print('Recording debt...')
                     debt = Dbts.objects.create(
                         creator = creator,
                         sales_tab=sale,
@@ -248,7 +256,6 @@ def record_sales(request):
 @permission_classes([IsAuthenticated])
 def record_others_products_sales(request):
     if request.method == 'POST':
-        print('all data ', request.data)
         
         user_id = request.user
         custom_user_id = user_id.id
@@ -270,7 +277,7 @@ def record_others_products_sales(request):
 
         customer = myDict.get('customer', {})
         type_of_sale = customer.get('sales', '')
-        # print('Sales type ', sales_type)
+        
 
         # Assign default customer details if not provided
         name = customer.get('name', '')
@@ -449,7 +456,7 @@ def assignedOtherProduct(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def addassignedProductSpoiled(request):
-    print('data ', request.data)
+    
     try:
         # Extract data from request
         product_id = request.data.get('id')
@@ -501,7 +508,7 @@ def addassignedProductSpoiled(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def updateassignedProductSpoiled(request):
-    print('data ', request.data)
+    
     try:
         # Extract data from request
         product_id = request.data.get('id')
@@ -561,15 +568,11 @@ def sendsms(request):
     if request.method == 'POST':
         selected_group = request.data.get('customer')
         message_text = request.data.get('message')
-        print('message ', message_text)
         for item in selected_group:
-            print('This is x ', item)
             customer = Customers.objects.get(id=item)
             send_to = ["+254" + str(customer.phone)]
-            print('send to ', send_to)
             smsSender(send_to , message_text)
         # customer = Customers.objects.get(id=selected_group)
-        # print('customer ', customer)
         # Create an instance of the serializer with the request data
         serializer = RecordMessageSerializer(data=request.data)
 
@@ -596,10 +599,9 @@ def sendsms(request):
 @permission_classes([IsAuthenticated])
 def sendbulksms(request):
     if request.method == 'POST':
-        print('data ', request.data)
+        
         selected_group = request.data.get('selected_group')
         selected_location_id = request.data.get('selected_location')
-        print('Slected Location ', selected_location_id)
         message_text = request.data.get('message')
         # selected_customer_phone_numbers = []
         if selected_group == 'all':
@@ -643,7 +645,6 @@ def sendbulksms(request):
 
                 # Fetch only wholesale customers
                 customers = Customers.objects.filter(sales=Customers.WHOLESALE)
-                print('Wholesale customers ', customers)
                 
                 message = Messages(message=message_text)
                 message.save()
@@ -661,7 +662,6 @@ def sendbulksms(request):
                 message.customer.set(customers)
                 # message.location.set([location])
                 
-                print('No of customers ', customers.count())
                 for customer in customers:
                     print('Customer:', customer.name)
                
@@ -689,7 +689,6 @@ def sendbulksms(request):
                     
                 # selected_customer_phone_numbers = [customer.phone for customer in customers]
                 selected_customer_phone_numbers = ["+254" + str(customer.phone) for customer in customers]
-                print('This are users to receive sms ', selected_customer_phone_numbers)
                 message.customer.set(customers)
                 # message.location.set([location])
                
@@ -710,7 +709,6 @@ def sendbulksms(request):
                 
                 message.employees.set(employees)
                 selected_employee_phone_numbers = ["+254" + str(employees.phone) for employees in employees]
-                print('EMployees phone numbers ', selected_employee_phone_numbers)
                
                
                 smsSender(selected_customer_phone_numbers, message_text)
@@ -781,7 +779,7 @@ def assign_products(request):
     try:
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        print('Serializer.data ', serializer.data)
+        
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     except serializers.ValidationError as e:
         print('Validation errors:', e.detail)
@@ -790,7 +788,6 @@ def assign_products(request):
 
 @api_view(['PATCH'])
 def update_assigned_quantity(request, pk):
-    print('This is the data ', request.data)
     try:
         assigned_cylinder = AssignedCylinders.objects.get(pk=pk)
     except AssignedCylinders.DoesNotExist:
@@ -821,7 +818,7 @@ def sales_team_management(request):
 
 @api_view(['POST'])
 def createteam(request):
-    print('data ', request.data)
+    
     serializer = CreateSalesTeamSerializer(data=request.data, context={'request': request})
     try:
         serializer.is_valid(raise_exception=True)
@@ -913,7 +910,7 @@ class RefillOperations(APIView):
 
 class AddNewCylinder(APIView):
     def post(self, request):
-        print('data ', request.data)
+        
         serializer = CylinderCreateSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -958,7 +955,6 @@ class AddNewCylinder(APIView):
                 max_retail_refil_price=max_retail_refil_price,
             )
 
-            print('created ', cylinder)
         # Add the cylinder to CylinderStore
         store = CylinderStore.objects.create(
             cylinder=cylinder,
@@ -995,7 +991,7 @@ class AddNewCylinder(APIView):
 
 class CylinderOperations(APIView):
     def put(self, request, pk):
-        print('Data ', request.data)
+        
         # pk = request.data.get("cylinderId")
         # updated_data = request.data.get("updatedName")
         try:
@@ -1004,7 +1000,7 @@ class CylinderOperations(APIView):
             return Response(status=status.HTTP_404_NOT_FOUND)
         
         serialize = CylinderTypeUpdateSerializer(cylinder, data = request.data)
-        print('Serilized data ', serialize)
+      
         if serialize.is_valid():
             serialize.save()
             return Response(serialize.data)
@@ -1014,7 +1010,6 @@ class CylinderOperations(APIView):
 
 class AnotherCylinder(APIView):
     def post(self, request, pk):
-        print('New cylinder data:', request.data)
         
         # Get the gas_type (CylinderType) by ID
         try:
@@ -1098,7 +1093,7 @@ class AnotherCylinder(APIView):
         
 
     def delete(self, request, pk):
-        print('Deleting..')
+        
         try:
             cylinder = CylinderType.objects.get(pk=pk)
         except CylinderType.DoesNotExist:
@@ -1112,7 +1107,6 @@ class AnotherCylinder(APIView):
 
 class AssignCylinderView(APIView):
     def post(self, request):
-        print('data is ', request.data)
         serializer = AssignedCylinderSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -1240,7 +1234,6 @@ class AssingnedCylindersLost(APIView):
             # Extract sales team and cylinder loss details
             sales_team_id = request.data.get('sales_team_id')
             losses = request.data.get('losses', [])
-            print('Loses ', losses)
 
             if not sales_team_id or not losses:
                 return Response({"error": "Sales team ID and losses are required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -1257,7 +1250,6 @@ class AssingnedCylindersLost(APIView):
                     cylinder_id=cylinder_id,
                     transaction_complete=False
                 ).first()
-                print('Cylinder lost ', assigned_cylinder)
 
                 if assigned_cylinder:
                     assigned_cylinder.filled_lost += filled_lost
@@ -1451,8 +1443,7 @@ def return_cylinder_lost(request, pk):
         # Retrieve the cylinder loss instance by primary key
         cylinder_lost = CylinderLost.objects.get(pk=pk)
         cylinder_store = cylinder_lost.cylinder.cylinder
-        print('store data found ', cylinder_store.empties)
-        print('cylinder ', cylinder_lost)
+    
     except CylinderLost.DoesNotExist:
         return Response({"error": "CylinderLost not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -1622,14 +1613,92 @@ class ViewAllSales(APIView):
     def get(self, request):
         all_sales = SalesTab.objects.order_by('-date_sold')
 
-
-class ExpensesOperation(APIView):
-    # permission_classes = [IsAuthenticated]
-    def get(self, request, employee_id):
-        expenses = Expenses.objects.filter(employee = employee_id)
+class TeamExpensesOperation(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request, salesTeam_id):
+        expenses = Expenses.objects.filter(sales_team = salesTeam_id, resolved=False).order_by('-date')
         serialize = ExpensesSerializer(expenses, many=True)
         return Response(serialize.data, status=status.HTTP_200_OK)
     
+class ExpensesOperation(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request, employee_id):
+        expenses = Expenses.objects.filter(employee = employee_id, resolved=False).order_by('-date')
+        serialize = ExpensesSerializer(expenses, many=True)
+        return Response(serialize.data, status=status.HTTP_200_OK)
+
+    def post(self, request, employee_id):
+        data = request.data.copy()
+        serializer = ExpensesSerializer(data=data, context={"request": request}, partial=True)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            print('Error is ', serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # # print('request data ', request.data)
+        # return Response('ok')
+
+class CashHandoutOperation(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request, employee_id):
+        print('request data ', request.data)
+        
+        # today = date.today()
+        sales_team_id = int(request.data.get('sales_team'))
+        cash = int(request.data.get('cash_at_hand'))
+        cash_default = int(request.data.get('cash_default'))
+        date_data = request.data.get('date')
+
+        try:
+            existing = CashHandOut.objects.get(sales_team_id=sales_team_id, date=date_data)
+            print("✅ Updating existing cash handout entry")
+
+            existing.cash = cash
+            existing.cash_default = cash_default
+            existing.employee_id = employee_id
+            existing.date = date_data
+            existing.save()
+
+            serializer = CashHandOutSerializer(existing)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except CashHandOut.DoesNotExist:
+            print("🆕 Creating new cash handout entry")
+
+            data = {
+                "employee": employee_id,
+                "sales_team": sales_team_id,
+                "cash": cash,
+                "cash_default": cash_default,
+                "date": date_data
+            }
+
+            serializer = CashHandOutSerializer(data=data, context={"request": request}, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                print("❌ Serializer errors:", serializer.errors)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # serializer = CashHandOutSerializer(data=data, context={"request": request}, partial=True)
+
+        # if serializer.is_valid():
+        #     serializer.save()
+        #     return Response(serializer.data, status=status.HTTP_201_CREATED)
+        # else:
+        #     print('Error is ', serializer.errors)
+        #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)   
+
+
+    def get(self, request):
+        cash_handouts = CashHandOut.objects.filter( resolved=False).order_by('-date')
+        serialize = CashHandOutSerializer(cash_handouts, many=True)
+        return Response(serialize.data, status=status.HTTP_200_OK)
+    
+
 
 class MyProfiles(APIView):
     permission_classes = [IsAuthenticated]
@@ -1682,6 +1751,7 @@ class MyProfiles(APIView):
 class SalesRecordsView(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request):
+        print('here')
         user = request.user
 
         # Retrieve the employee and their sales team
@@ -1700,26 +1770,56 @@ class SalesRecordsView(APIView):
         serializer = SalesRecordSerializer(sales, many=True, context={'request': request})
         return Response(serializer.data, status=200)
 
+
 class AdminSalesRecordsView(APIView):
     permission_classes = [IsAuthenticated]
-    def get(self, request):
-        # Filter sales by the sales team
-        sales = SalesTab.objects.order_by('-date_sold')
 
-        # Serialize the sales data
-        serializer = SalesRecordSerializer(sales, many=True, context={'request': request})
-        
-        return Response(serializer.data, status=200)
+    def get(self, request):
+        try:
+            # Retrieve sales records ordered by date sold
+            sales = SalesTab.objects.order_by('-date_sold')
+
+            # If no sales are found, return a meaningful response
+            if not sales.exists():
+                return Response(
+                    {'message': 'No sales records found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Serialize sales data
+            serializer = SalesRecordSerializer(sales, many=True, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            # Handle unexpected errors
+            return Response(
+                {'error': 'An error occurred while retrieving sales records', 'details': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
+
 class AdminVerifySalesRecordsView(APIView):
     permission_classes = [IsAuthenticated]
     def patch(self, request, sale_id):
+        # print('data requested', request.data)
+        sales_type =  request.data
+        # print('data requested', sales_type.get('paymentType'))
+        
+
         try:
             sale = SalesTab.objects.get(id=sale_id)
-            sale.admin_payment_verified = not sale.admin_payment_verified
-            sale.save()
+            if sales_type.get('paymentType') == 'mpesa':
+                print('sales type is mpesa')
+                sale.admin_mpesa_verified = not sale.admin_mpesa_verified
+                sale.save()
+
+            if sales_type.get('paymentType') == 'cash':
+                print('sales type is cash')
+                sale.admin_payment_verified = not sale.admin_payment_verified
+                sale.save()
             
             serializer = SalesRecordSerializer(sale)
+            print('response data ', serializer.data)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except SalesTab.DoesNotExist:
             return Response({"error": "Sale not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -1791,8 +1891,7 @@ def update_employee_status(request, employee_id):
                 user.user_permissions.add(employee_permission)
                 user.is_active = True  # Activate the user
 
-                print("Updated User Permissions:", user.user_permissions.all())
-                print("Has employee permission:", user.has_perm("Users.is_employee"))
+                
 
         # Handle "fire" status
         elif status_field == "fire":
@@ -1904,7 +2003,6 @@ class EmployeeDetails(APIView):
 class EmployeeSalary(APIView):
     def patch(self, request, pk):
         data = request.data
-        print('salary data ', data.get('contract_salary'))
         employee = get_object_or_404(Employees, pk=pk)
         employee.contract_salary = data.get('contract_salary')
         employee.save()
@@ -1928,7 +2026,6 @@ class AdvancesOperation(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
-            print(f'This is the error message {serializer.errors}')
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class resolve_advances(APIView):  
@@ -1968,7 +2065,6 @@ class CylinderRequestClear(APIView):
 class CylinderRequestGet(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request, team_id):
-        # print('data ', pk)
         employee = request.user.id
         requests_data = CylinderRequestTransfer.objects.get(employee=employee, given=False, cylinder=team_id)
         requests_data.delete()
@@ -2014,7 +2110,6 @@ class CylinderRequest(APIView):
             serializer.save()  
             return Response(serializer.data, status=status.HTTP_201_CREATED)  # New record created
 
-        print('Error:', serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
@@ -2027,7 +2122,6 @@ class CylinderRequestedToMe(APIView):
     def get(self, request):
         requests_data = CylinderRequestTransfer.objects.filter(given=False)
         serializer = AllCylinderRequestSerializer(requests_data, many=True)
-        print('all cylinder ', serializer.data)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 
@@ -2063,7 +2157,6 @@ class ApproveCylinderRequested(APIView):
             cylinder_requested.save()
             return Response('ok', status=status.HTTP_201_CREATED)
         except AssignedCylinders.DoesNotExist:
-            print('Does not exist')
             new_assignment = AssignedCylinders.objects.create(
                     creator=cylinder_requested.employee,
                     sales_team=cylinder_requested.requesting_team,
@@ -2075,5 +2168,47 @@ class ApproveCylinderRequested(APIView):
             cylinder_requested.save()
             return Response('ok', status=status.HTTP_201_CREATED)
         # serializer = AllCylinderRequestSerializer(requests_data, many=True)
-        # print('all cylinder ', serializer.data)
         return Response('ok', status=status.HTTP_200_OK)
+    
+
+
+
+class ExpensesOwnerOperation(APIView):
+    # ExpensesOwnerOperation
+    permission_classes = [IsAuthenticated]
+    def post(self, request, expense_id):
+        print('request data ', request.data)
+        data = request.data.copy()
+
+        
+        try:
+            expense = Expenses.objects.get(id=expense_id)
+        except Expenses.DoesNotExist:
+            return Response({"error": "Expense not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        owner = request.data.get('owner')
+        if owner == 'Company':
+            expense.expense_on_choice = Expenses.COMPANY
+            expense.employee = None
+            print("Assigned to Company")
+            # print('Company is ', data.get('owner'))
+        else:
+            print('Owner', data.get('Owner'))
+            try:
+                employee = Employees.objects.get(pk=owner)
+                expense.expense_on_choice = Expenses.EMPLOYEE
+                expense.employee = employee
+                print("Assigned to Employee:", employee)
+            except Employees.DoesNotExist:
+                return Response({"error": "Employee not found."}, status=status.HTTP_404_NOT_FOUND)
+        # Update the expense with the new data
+        expense.save()
+        serializer = ExpensesSerializer(expense)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+        # serializer = ExpensesSerializer(expense, data=request.data, partial=True)
+        # if serializer.is_valid():
+        #     serializer.save()
+        #     return Response(serializer.data, status=status.HTTP_200_OK)
+        # else:
+        #     print('Error is ', serializer.errors)
+        #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

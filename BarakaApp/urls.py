@@ -59,6 +59,8 @@ urlpatterns = [
     path('return-lost/<int:pk>/return/', views.return_cylinder_lost, name='return_cylinder_lost'),
     path('cylinder-less_pay/<int:pk>/resolve/', views.resolve_cylinder_lessPay, name='resolve_cylinder_lost'),
     path('expenses/<str:employee_id>/', views.ExpensesOperation.as_view()),
+    path('update-owner-expense/<str:expense_id>/', views.ExpensesOwnerOperation.as_view(), name='owner-expenses'),
+    path('team-expenses/<str:salesTeam_id>/', views.TeamExpensesOperation.as_view()),
     path('employees/<str:pk>/', views.single_employees, name='single-employees'),
     path('salary/<str:pk>/', views.EmployeeSalary.as_view(), name='salary-employees'),
     path('advances/<str:employeeId>/', views.AdvancesOperation.as_view()),
@@ -67,5 +69,8 @@ urlpatterns = [
     path('cylinder-request-get/<str:team_id>/', views.CylinderRequestGet.as_view(), name='cylinder-request-get'),
     path('cylinder-request-clear/<str:team_id>/', views.CylinderRequestClear.as_view(), name='cylinder-request-get'),
     path('all-request/', views.CylinderRequestedToMe.as_view()),
-    path('approve-request/<str:cylinder_id>/', views.ApproveCylinderRequested.as_view())
+    path('approve-request/<str:cylinder_id>/', views.ApproveCylinderRequested.as_view()),
+    path('cash/<str:employee_id>/', views.CashHandoutOperation.as_view()),
+    path('cash/', views.CashHandoutOperation.as_view()),
+    # path('cash/<str:pk>/resolve/', views.resolve_cash, name='resolve_cash'),
 ]

@@ -121,11 +121,15 @@ class Employees(models.Model):
         ]
 
 
-class UnaccountedFor(models.Model):
+class CashDefault(models.Model):
     employee = models.ForeignKey(Employees, on_delete=models.CASCADE)
-    amount = models.PositiveIntegerField()
+    cash_at_hand = models.PositiveIntegerField(default=0)
+    amount_deficit = models.PositiveIntegerField(default=0)
     date = models.DateField()
     date_added = models.DateTimeField(auto_now_add=True)
+
+
+
 
 # class Defau
 
@@ -146,16 +150,6 @@ class MonthlySalary(models.Model):
     payment_date = models.DateField()
 
 
-class Expenses(models.Model):
-    employee = models.ForeignKey(Employees, on_delete=models.CASCADE)
-    amount = models.PositiveIntegerField(default=0)
-    name = models.CharField(max_length=500)
-    resolved = models.BooleanField(default=False)
-    date = models.DateTimeField(auto_now_add=True)
-
-
-    def __str__(self) -> str:
-        return self.name
     
 
 class DefaultedProducts(models.Model):
@@ -365,6 +359,20 @@ class CylinderLessPay(models.Model):
     #     return self.employee
 
 
+class CashHandOut(models.Model):
+    employee = models.ForeignKey(Employees, on_delete=models.SET_NULL, null=True, blank=True)
+    sales_team = models.ForeignKey(SalesTeam, on_delete=models.SET_NULL, null=True, blank=True)
+    cash = models.PositiveIntegerField(default=0)
+    cash_default = models.IntegerField(default=0)
+    resolved = models.BooleanField(default=False)
+    deficit_date = models.DateTimeField(auto_now_add=True)
+    date = models.DateField(null=True, blank=True)
+
+    def __str__(self):
+        return self.employee.first_name
+
+
+
 class Customers(models.Model):
     WHOLESALE = "WHOLESALE"
     RETAIL = "RETAIL"
@@ -422,9 +430,11 @@ class SalesTab(models.Model):
     expected_date_to_repay = models.DateField(blank=True, null=True)
     sales_person_payment_verified = models.BooleanField(default=False)
     admin_cash_verified = models.BooleanField(default=False)
+    admin_payment_verified = models.BooleanField(default=False)
     admin_mpesa_verified = models.BooleanField(default=False)
     mpesa_code = models.JSONField(default=list,null=True, blank=True)
-    cash = models.CharField(max_length=200, null=True, blank=True)
+    cashAmount = models.PositiveIntegerField(default=0)
+    mpesaAmount = models.PositiveIntegerField(default=0)
     date_sold = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
@@ -433,11 +443,11 @@ class SalesTab(models.Model):
 
 
 class SalesTransaction(models.Model):
-       sales = models.ForeignKey(SalesTab, on_delete=models.SET_NULL, null=True, blank=True)
-       mpesa_code = models.CharField(max_length=200)
-       second_mpesa_code = models.CharField(max_length=200)
-       third_mpesa_code = models.CharField(max_length=200)
-       cash = models.CharField(max_length=200)
+       sales = models.ForeignKey(SalesTab, on_delete=models.SET_NULL, null=True, blank=True,related_name="sales_transaction")
+       mpesa_code = models.CharField(max_length=200, blank=True, null=True)
+       second_mpesa_code = models.CharField(max_length=200, blank=True, null=True)
+       third_mpesa_code = models.CharField(max_length=200, blank=True, null=True)
+       cash = models.CharField(max_length=200, null=True, blank=True)
 
 
 class OtherProductsSalesTab(models.Model):
@@ -518,3 +528,28 @@ class Messages(models.Model):
     
     def __str__(self):
         return f"{self.message[:150]}..."
+    
+
+
+
+
+class Expenses(models.Model):
+    # expense_on
+    COMPANY = 'COMPANY'
+    EMPLOYEE = 'EMPLOYEE'
+    
+    expense_on = [
+        (COMPANY, 'Company'),
+        (EMPLOYEE,'Employee')
+    ]
+    expense_on_choice = models.CharField(max_length=200, choices=expense_on, null=True, blank=True)
+    sales_team = models.ForeignKey(SalesTeam, on_delete=models.CASCADE, null=True, blank=True)
+    employee = models.ForeignKey(Employees, on_delete=models.CASCADE, null=True, blank=True)
+    amount = models.PositiveIntegerField(default=0)
+    name = models.CharField(max_length=500)
+    resolved = models.BooleanField(default=False)
+    date = models.DateTimeField(auto_now_add=True)
+
+
+    def __str__(self) -> str:
+        return self.name

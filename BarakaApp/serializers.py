@@ -866,15 +866,18 @@ class CreateMyProfileSerializer(serializers.ModelSerializer):
         model = Employees
         fields = '__all__'
 
+class SalesTransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SalesTransaction
+        fields = '__all__'
 
 
 class SalesRecordSerializer(serializers.ModelSerializer):
-    # sales_person = serializers.CharField(source='sales_person.email', read_only=True)
     sales_person = serializers.SerializerMethodField()
     customer = Customerserializer(read_only=True)
     product = AssignedCylinderSerializerrr(read_only=True)
     debt_info = serializers.SerializerMethodField()
-
+    sales_transaction = SalesTransactionSerializer(read_only=True)
     class Meta:
         model = SalesTab
         fields = '__all__'
@@ -912,17 +915,33 @@ class CylinderLostResolveSerializer(serializers.ModelSerializer):
         instance.resolved = validated_data.get('resolved', instance.resolved)
         instance.save()
         return instance
+
+
+
+
+class EmployeeExpensesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Employees
+        fields = '__all__'
+
+
     
 
 
 class ExpensesSerializer(serializers.ModelSerializer):
+    employee = EmployeeExpensesSerializer()
     class Meta:
         model = Expenses
         fields = '__all__'
 
 
     
+class CashHandOutSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CashHandOut
+        fields = '__all__'
 
+        
 
 class AdvancesSerializer(serializers.ModelSerializer):
     class Meta:
