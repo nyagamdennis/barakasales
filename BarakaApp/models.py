@@ -59,6 +59,7 @@ class Cylinder(models.Model):
     max_wholesale_refil_price = models.PositiveIntegerField(default=0)
     max_retail_selling_price = models.PositiveIntegerField(default=0)
     max_retail_refil_price = models.PositiveIntegerField(default=0)
+    empty_cylinder_price = models.PositiveIntegerField(default=0)
     
     def __str__(self):
         return f'{self.gas_type.name} {self.weight.weight}'

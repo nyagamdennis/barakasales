@@ -675,7 +675,7 @@ class AssignedCylinderSerializerDefaulted(serializers.ModelSerializer):
     max_wholesale_refil_price = serializers.IntegerField(source="cylinder.cylinder.max_wholesale_refil_price", read_only=True)
     max_retail_selling_price = serializers.IntegerField(source="cylinder.cylinder.max_retail_selling_price", read_only=True)
     max_retail_refil_price = serializers.IntegerField(source="cylinder.cylinder.max_retail_refil_price", read_only=True)
-
+    empty_cylinder_price = serializers.IntegerField(source="cylinder.cylinder.empty_cylinder_price", read_only=True)
     class Meta:
         model = AssignedCylinders
         fields = [
@@ -709,7 +709,8 @@ class AssignedCylinderSerializerDefaulted(serializers.ModelSerializer):
             "max_wholesale_refil_price",
             "max_retail_selling_price",
             "max_retail_refil_price",
-            "transfered_cylinder"
+            "transfered_cylinder",
+            "empty_cylinder_price"
         ]
 
 class LostCylindersSerializer(serializers.ModelSerializer):
