@@ -20,8 +20,8 @@ from datetime import date
 
 def smsSender(users, message):
     username = "Kibaki"    # use 'sandbox' for development in the test environment
-    api_key = "081476f218d28a1a680a78086d13efa2d3e94044433f2c743dbc15db302d57b1"      # use your sandbox app API key for development in the test environment
-    africastalking.initialize(username, api_key)
+    api_keys = "081476f218d28a1a680a78086d13efa2d3e94044433f2c743dbc15db302d57b1"      # use your sandbox app API key for development in the test environment
+    africastalking.initialize(username, api_keys)
 
 
     # Initialize a service e.g. SMS
