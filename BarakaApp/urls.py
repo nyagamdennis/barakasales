@@ -30,6 +30,7 @@ urlpatterns = [
     path('addnewcylinder/', views.AddNewCylinder.as_view()),
     path('updateCylinder/<str:pk>/', views.CylinderOperations.as_view()),
     path('updateThisCylinder/<str:pk>/<str:weightId>/', views.updateThiscylinder.as_view(), name='resolve_cylinder'),
+    path('updateThisCylinder/<str:pk>/', views.updateThiscylinder.as_view(), name='resolve_cylinder'),
     path('addanothercylinder/<str:pk>/', views.AnotherCylinder.as_view()),
     path('assign-cylinders/', views.BulkAssignCylinderView.as_view(), name='assign-cylinders'),
     path('the-assigned-cylinders/', views.AssignedCylindersListView.as_view(), name='assigned-cylinders-list'),
