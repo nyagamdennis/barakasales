@@ -14,10 +14,10 @@ class CustomerLocationSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class CylinderTypeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CylinderType
-        fields = '__all__'
+# class CylinderTypeSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = CylinderType
+#         fields = '__all__'
 
 class CylinderTypeUpdateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -509,7 +509,8 @@ class CylinderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Cylinder
-        fields = ['id', 'gas_type', 'weight', 'stores']
+        fields = ['id', 'gas_type', 'weight', 'stores', 'min_wholesale_selling_price', 'min_wholesale_refil_price',
+                  'min_retail_selling_price', 'min_retail_refil_price', 'max_wholesale_selling_price', 'max_wholesale_refil_price', 'empty_cylinder_price']
 
 class CylinderTypeSerializer(serializers.ModelSerializer):
     cylinders = CylinderSerializer(many=True, source='cylinder_set', read_only=True)

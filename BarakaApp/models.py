@@ -436,6 +436,8 @@ class SalesTab(models.Model):
     mpesa_code = models.JSONField(default=list,null=True, blank=True)
     cashAmount = models.PositiveIntegerField(default=0)
     mpesaAmount = models.PositiveIntegerField(default=0)
+    amount_sold_for = models.PositiveIntegerField(default=0)
+    amount_sold_for_mpesa = models.PositiveIntegerField(default=0)
     date_sold = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):

@@ -102,7 +102,7 @@ def record_sales(request):
         return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
     
     if request.method == 'POST':
-       
+        print('sales data ', request.data)
         user_id = request.user
         custom_user_id = user_id.id
         
@@ -148,6 +148,7 @@ def record_sales(request):
         formdata['partial_payment_amount'] = myDict['partial_payment_amount']
         formdata['exchanged_with_local'] = myDict['exchanged_with_local']
         formdata['debt_amount'] = myDict['debt_amount']
+        # formdata['amount_sold_for'] = myDict['amount_sold_for']
         formdata['repayment_date'] = myDict.get('repayment_date', None)
         formdata['total_amount'] = myDict['total_amount']
         # formdata['mpesa_code'] = myDict['mpesa_code']
@@ -160,11 +161,7 @@ def record_sales(request):
         formdata['cashAmount'] = int(myDict.get('cashAmount', 0))
         formdata['mpesaAmount'] = int(myDict.get('mpesaAmount', 0))
 
-        # if isinstance(mpesa_codes, list):
-        #     formdata['mpesa_code'] = ",".join(mpesa_codes)  # Convert to comma-separated string
-        # else:
-        #     formdata['mpesa_code'] = mpesa_codes  # Store as a single string
-        # formdata['cash'] = myDict['cash']
+       
         
         formdata['sales_person'] = request.user.id
         formdata['sales_team'] = sales_team
@@ -188,8 +185,10 @@ def record_sales(request):
 
         for i, product_data in enumerate(products):
             product_id = product_data.get('id')
+            amount_sold_for = int(product_data.get('amount_sold_for', 0))
+            amount_sold_for_mpesa = int(product_data.get('amount_sold_for_mpesa', 0))
             assigned_quantity = int(product_data.get('quantity', 0))
-
+            
             try:
                 assigned_product = AssignedCylinders.objects.get(id=product_id)
             except AssignedCylinders.DoesNotExist:
@@ -206,7 +205,9 @@ def record_sales(request):
 
             # Deduct the assigned quantity
             assigned_product.filled -= assigned_quantity
-         
+            
+            formdata['amount_sold_for'] = amount_sold_for
+            formdata["amount_sold_for_mpesa"] = amount_sold_for_mpesa
 
             if formdata['sales_type'] == "REFILL" and types_of_operation == "WHOLESALE":
                 assigned_product.wholesale_refilled += assigned_quantity
@@ -833,6 +834,7 @@ def createteam(request):
     
 @api_view(['GET'])
 def Stores(request):
+    print('getting cylinders...')
     store = CylinderType.objects.order_by("-date_added")
     serializer = CylinderTypeSerializer(store, many=True)
 
@@ -848,7 +850,18 @@ class OtherProductsViews(APIView):
 
 
     def post(self, request):
+        print('other products data ', request.data)
+        product_name = request.data.get('name', '').strip()
+        if OtherProducts.objects.filter(name__iexact=product_name).exists():
+            return Response(
+                {'error': 'Product with this name already exists.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+        # products = OtherProducts.objects.filter(name=request.data['name'])
         
+        # print('products ', products)
         serializer = CreateOtherProductsSerializer(data=request.data)
         try:
             serializer.is_valid(raise_exception=True)
@@ -859,8 +872,27 @@ class OtherProductsViews(APIView):
             return Response({'errors': e.detail}, status=status.HTTP_400_BAD_REQUEST)
     
     
+    def patch(self, request, pk):
+        try:
+            product = OtherProducts.objects.get(pk=pk)
+        except OtherProducts.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
+        serializer = CreateOtherProductsSerializer(product, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    def delete(self, request, pk):
+        try:
+            product = OtherProducts.objects.get(pk=pk)
+        except OtherProducts.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        product.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class RefillOperations(APIView):
     def post(self, request):
@@ -910,7 +942,8 @@ class RefillOperations(APIView):
 
 class AddNewCylinder(APIView):
     def post(self, request):
-        
+        print('new Cylinder Data', request.data)
+        # serializer = CylinderTypeSerializer(data=request.data)
         serializer = CylinderCreateSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -939,6 +972,9 @@ class AddNewCylinder(APIView):
         # if not weight:
        
         cylinder = Cylinder.objects.filter(gas_type=gas_type, weight=weight).first()
+        if cylinder:
+            return Response({"message": "Cylinder with this gas type and weight already exists."}, status=status.HTTP_400_BAD_REQUEST)
+        # Check if the cylinder already exists
 
         if not cylinder:
             # Create the new cylinder if it doesn't exist
@@ -965,33 +1001,105 @@ class AddNewCylinder(APIView):
             dates=datetime.now(),
         )
 
-        return Response({
-            'message': 'Cylinder created and added to store successfully',
-            'cylinder': {
-                'id': cylinder.id,
-                'gas_type': cylinder.gas_type.name,
-                'weight': cylinder.weight.weight,
-                'min_wholesale_selling_price': cylinder.min_wholesale_selling_price,
-                'min_wholesale_refil_price': cylinder.min_wholesale_refil_price,
-                'min_retail_selling_price': cylinder.min_retail_selling_price,
-                'min_retail_refil_price': cylinder.min_retail_refil_price,
-                'max_wholesale_selling_price': cylinder.max_wholesale_selling_price,
-                'max_wholesale_refil_price': cylinder.max_wholesale_refil_price,
-                'max_retail_selling_price': cylinder.max_retail_selling_price,
-                'max_retail_refil_price': cylinder.max_retail_refil_price,
-            },
-            'store': {
-                'id': store.id,
-                'filled': store.filled,
-                'empties': store.empties,
-                'total_cylinders': store.total_cylinders,
-            }
-        }, status=status.HTTP_201_CREATED)
 
+        return Response({
+            'message': 'Cylinder created and added to store successfully.',
+            'data': CylinderTypeSerializer(gas_type).data
+        }, status=status.HTTP_201_CREATED)
+        # return Response({
+        #     'message': 'Cylinder created and added to store successfully',
+        #     'cylinder': {
+        #         'id': cylinder.id,
+        #         'gas_type': cylinder.gas_type.name,
+        #         'weight': cylinder.weight.weight,
+        #         'min_wholesale_selling_price': cylinder.min_wholesale_selling_price,
+        #         'min_wholesale_refil_price': cylinder.min_wholesale_refil_price,
+        #         'min_retail_selling_price': cylinder.min_retail_selling_price,
+        #         'min_retail_refil_price': cylinder.min_retail_refil_price,
+        #         'max_wholesale_selling_price': cylinder.max_wholesale_selling_price,
+        #         'max_wholesale_refil_price': cylinder.max_wholesale_refil_price,
+        #         'max_retail_selling_price': cylinder.max_retail_selling_price,
+        #         'max_retail_refil_price': cylinder.max_retail_refil_price,
+        #     },
+        #     'store': {
+        #         'id': store.id,
+        #         'filled': store.filled,
+        #         'empties': store.empties,
+        #         'total_cylinders': store.total_cylinders,
+        #     }
+        # }, status=status.HTTP_201_CREATED)
+
+
+
+class updateThiscylinder(APIView):
+    def put(self, request, pk):
+        cylinder_id = request.data.get('cylinderId')
+        weight_value = request.data.get('weight')
+        if not cylinder_id or not weight_value:
+            return Response({'error': 'cylinderId and weight are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            cylinder = Cylinder.objects.get(pk=cylinder_id)
+        except Cylinder.DoesNotExist:
+            return Response({'error': 'Cylinder not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            cylinder_store = CylinderStore.objects.get(pk=pk)
+        except CylinderStore.DoesNotExist:
+            return Response({'error': 'Cylinder store not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        weight_instance, _ = CylinderWeight.objects.get_or_create(weight=int(weight_value))
+
+        # Update Cylinder fields
+        cylinder.weight = weight_instance
+        cylinder.min_wholesale_selling_price = request.data.get('min_wholesale_selling_price', cylinder.min_wholesale_selling_price)
+        cylinder.min_wholesale_refil_price = request.data.get('min_wholesale_refill_price', cylinder.min_wholesale_refil_price)
+        cylinder.min_retail_selling_price = request.data.get('min_retail_selling_price', cylinder.min_retail_selling_price)
+        cylinder.min_retail_refil_price = request.data.get('min_retail_refill_price', cylinder.min_retail_refil_price)
+        cylinder.max_wholesale_selling_price = request.data.get('max_wholesale_selling_price', cylinder.max_wholesale_selling_price)
+        cylinder.max_wholesale_refil_price = request.data.get('max_wholesale_refill_price', cylinder.max_wholesale_refil_price)
+        cylinder.max_retail_selling_price = request.data.get('max_retail_selling_price', cylinder.max_retail_selling_price)
+        cylinder.max_retail_refil_price = request.data.get('max_retail_refill_price', cylinder.max_retail_refil_price)
+        cylinder.empty_cylinder_price = request.data.get('empty_cylinder_price', cylinder.empty_cylinder_price)
+
+        cylinder.save()
+
+        # Update CylinderStore fields
+        cylinder_store.empties = request.data.get('empties', cylinder_store.empties)
+        cylinder_store.filled = request.data.get('filled', cylinder_store.filled)
+        cylinder_store.spoiled = request.data.get('spoiled', cylinder_store.spoiled)
+        cylinder_store.total_cylinders = int(cylinder_store.empties) + int(cylinder_store.filled) + int(cylinder_store.spoiled)
+        cylinder_store.dates = datetime.now()
+        cylinder_store.save()
+
+        # Return updated cylinder with nested store
+        return Response({
+            'message': 'Cylinder updated successfully.',
+            'data': CylinderSerializer(cylinder).data
+        }, status=status.HTTP_200_OK)
+    
+
+    def delete(self, request, pk, weightId):
+        print('cylinder weight id', weightId)
+        print('delete cylinder data', request.data)
+        try:
+            cylinder = Cylinder.objects.get(pk=pk)
+            print('cylinder is ', cylinder)
+        except Cylinder.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        
+        try:
+            weight = CylinderWeight.objects.get(pk=weightId)
+        except CylinderWeight.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        
+        # # weight.delete()
+        cylinder.delete()
+        return Response('Deleted')
+    
 
 class CylinderOperations(APIView):
     def put(self, request, pk):
-        
         # pk = request.data.get("cylinderId")
         # updated_data = request.data.get("updatedName")
         try:
@@ -1010,40 +1118,34 @@ class CylinderOperations(APIView):
 
 class AnotherCylinder(APIView):
     def post(self, request, pk):
-        
-        # Get the gas_type (CylinderType) by ID
         try:
             cylinder_type = CylinderType.objects.get(pk=pk)
         except CylinderType.DoesNotExist:
             return Response({'error': 'Gas type not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Extract weight from the request data
         weight_data = request.data.get('weight')
         if not weight_data:
             return Response({'error': 'Weight is required'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Check if a weight already exists or create one
-        weight_instance, _ = CylinderWeight.objects.get_or_create(weight=int(weight_data))  # Convert weight to integer
-        
-        # Convert all prices and other numeric fields to integers
+
+        weight_instance, _ = CylinderWeight.objects.get_or_create(weight=int(weight_data))
+
         try:
             min_wholesale_selling_price = int(request.data.get('min_wholesale_selling_price', 0))
             min_wholesale_refil_price = int(request.data.get('min_wholesale_refill_price', 0))
             min_retail_selling_price = int(request.data.get('min_retail_selling_price', 0))
             min_retail_refil_price = int(request.data.get('min_retail_refill_price', 0))
-
             max_wholesale_selling_price = int(request.data.get('max_wholesale_selling_price', 0))
             max_wholesale_refil_price = int(request.data.get('max_wholesale_refill_price', 0))
             max_retail_selling_price = int(request.data.get('max_retail_selling_price', 0))
             max_retail_refil_price = int(request.data.get('max_retail_refill_price', 0))
-
             empties = int(request.data.get('empties', 0))
             filled = int(request.data.get('filled', 0))
             spoiled = int(request.data.get('spoiled', 0))
+            empty_cylinder_price = int(request.data.get('empty_cylinder_price', 0))
         except ValueError:
             return Response({'error': 'All numeric fields must contain valid integers'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Create the new cylinder
+        # Create the Cylinder
         cylinder = Cylinder.objects.create(
             gas_type=cylinder_type,
             weight=weight_instance,
@@ -1055,10 +1157,11 @@ class AnotherCylinder(APIView):
             max_wholesale_refil_price=max_wholesale_refil_price,
             max_retail_selling_price=max_retail_selling_price,
             max_retail_refil_price=max_retail_refil_price,
+            empty_cylinder_price=empty_cylinder_price,
         )
 
-        # Optionally, save cylinder store data if required
-        cylinder_store = CylinderStore.objects.create(
+        # Create Store record
+        CylinderStore.objects.create(
             cylinder=cylinder,
             empties=empties,
             filled=filled,
@@ -1067,28 +1170,74 @@ class AnotherCylinder(APIView):
             dates=datetime.now(),
         )
 
-        # Return success response
-        return Response(
-            {
-                'message': "New cylinder and store data created successfully.",
-                'cylinder_id': cylinder.id,
-                'gas_type': cylinder.gas_type.name,
-                'weight': cylinder.weight.weight,
-                'min_wholesale_selling_price': cylinder.min_wholesale_selling_price,
-                'min_wholesale_refil_price': cylinder.min_wholesale_refil_price,
-                'min_retail_selling_price': cylinder.min_retail_selling_price,
-                'min_retail_refil_price': cylinder.min_retail_refil_price,
-                'max_wholesale_selling_price': cylinder.max_wholesale_selling_price,
-                'max_wholesale_refil_price': cylinder.max_wholesale_refil_price,
-                'max_retail_selling_price': cylinder.max_retail_selling_price,
-                'max_retail_refil_price': cylinder.max_retail_refil_price,
-                'empties': cylinder_store.empties,
-                'filled': cylinder_store.filled,
-                'spoiled': cylinder_store.spoiled,
-                'total_cylinders': cylinder_store.total_cylinders,
-            },
-            status=status.HTTP_201_CREATED
-        )
+        # Use serializer to return structured response
+        serializer = CylinderSerializer(cylinder)
+        return Response({
+            "message": "Cylinder and store created successfully.",
+            "data": serializer.data
+        }, status=status.HTTP_201_CREATED)
+
+#     def post(self, request, pk):
+        
+#         # Get the gas_type (CylinderType) by ID
+#         try:
+#             cylinder_type = CylinderType.objects.get(pk=pk)
+#         except CylinderType.DoesNotExist:
+#             return Response({'error': 'Gas type not found'}, status=status.HTTP_404_NOT_FOUND)
+
+#         # Extract weight from the request data
+#         weight_data = request.data.get('weight')
+#         if not weight_data:
+#             return Response({'error': 'Weight is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+#         # Check if a weight already exists or create one
+#         weight_instance, _ = CylinderWeight.objects.get_or_create(weight=int(weight_data))  # Convert weight to integer
+        
+#         # Convert all prices and other numeric fields to integers
+#         try:
+#             min_wholesale_selling_price = int(request.data.get('min_wholesale_selling_price', 0))
+#             min_wholesale_refil_price = int(request.data.get('min_wholesale_refill_price', 0))
+#             min_retail_selling_price = int(request.data.get('min_retail_selling_price', 0))
+#             min_retail_refil_price = int(request.data.get('min_retail_refill_price', 0))
+
+#             max_wholesale_selling_price = int(request.data.get('max_wholesale_selling_price', 0))
+#             max_wholesale_refil_price = int(request.data.get('max_wholesale_refill_price', 0))
+#             max_retail_selling_price = int(request.data.get('max_retail_selling_price', 0))
+#             max_retail_refil_price = int(request.data.get('max_retail_refill_price', 0))
+
+#             empties = int(request.data.get('empties', 0))
+#             filled = int(request.data.get('filled', 0))
+#             spoiled = int(request.data.get('spoiled', 0))
+#         except ValueError:
+#             return Response({'error': 'All numeric fields must contain valid integers'}, status=status.HTTP_400_BAD_REQUEST)
+
+#         # Create the new cylinder
+#         cylinder = Cylinder.objects.create(
+#             gas_type=cylinder_type,
+#             weight=weight_instance,
+#             min_wholesale_selling_price=min_wholesale_selling_price,
+#             min_wholesale_refil_price=min_wholesale_refil_price,
+#             min_retail_selling_price=min_retail_selling_price,
+#             min_retail_refil_price=min_retail_refil_price,
+#             max_wholesale_selling_price=max_wholesale_selling_price,
+#             max_wholesale_refil_price=max_wholesale_refil_price,
+#             max_retail_selling_price=max_retail_selling_price,
+#             max_retail_refil_price=max_retail_refil_price,
+#         )
+
+#         # Optionally, save cylinder store data if required
+#         cylinder_store = CylinderStore.objects.create(
+#             cylinder=cylinder,
+#             empties=empties,
+#             filled=filled,
+#             spoiled=spoiled,
+#             total_cylinders=empties + filled + spoiled,
+#             dates=datetime.now(),
+#         )
+
+#         # Return success response
+#         serializer = CylinderSerializer(cylinder)
+#         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         
 
