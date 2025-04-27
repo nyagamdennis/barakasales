@@ -150,6 +150,9 @@ class MonthlySalary(models.Model):
     amount = models.PositiveIntegerField()
     payment_date = models.DateField()
 
+    def __str__(self):
+        return f'{self.employee.first_name} {self.employee.last_name} - {self.payment_date}'
+
 
     
 
@@ -299,8 +302,6 @@ class AssignedCylindersRecipt(models.Model):
     sales_team = models.ForeignKey(SalesTeam, on_delete=models.SET_NULL, null=True, blank=True)
     cylinder = models.ForeignKey(CylinderStore, on_delete=models.SET_NULL, null=True, blank=True)
     assigned_quantity = models.PositiveIntegerField(default=0)
-    # empties_lost = models.PositiveIntegerField(default=0)
-    # filled_lost = models.PositiveIntegerField(default=0)
     print_complete = models.BooleanField(default=False)
     date_assigned = models.DateTimeField(auto_now_add=True)
 
@@ -308,6 +309,13 @@ class AssignedCylindersRecipt(models.Model):
     #     return self.assigned_quantity
 
 
+class AssignedCylindersReciept(models.Model):
+    unique_code = models.CharField(max_length=200, blank=True, null=True)
+    sales_team = models.ForeignKey(SalesTeam, on_delete=models.SET_NULL, null=True, blank=True)
+    assigned_cylinders = models.ForeignKey(AssignedCylinders, on_delete=models.SET_NULL, null=True, blank=True)
+
+    def __str__(self):
+        return self.unique_code
 
 
 class AssignedOtherProducts(models.Model):
@@ -417,7 +425,7 @@ class SalesTab(models.Model):
     sales_person = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     sales_team = models.ForeignKey(SalesTeam, on_delete=models.CASCADE, null=True, blank=True)
     customer = models.ForeignKey(Customers, on_delete=models.CASCADE, related_name='customer_sales' )
-    product = models.ForeignKey(AssignedCylinders, on_delete=models.CASCADE, null=True, blank=True)
+    product = models.ForeignKey(AssignedCylinders, on_delete=models.CASCADE, null=True, blank=True, related_name="sales_as_product" )
     store_product = models.ForeignKey(CylinderStore, on_delete=models.CASCADE, null=True, blank=True)
     quantity = models.PositiveIntegerField(default=1)
     sales_type = models.CharField(choices=SALES_TYPE, max_length=200, null=True)
@@ -428,6 +436,7 @@ class SalesTab(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     is_fully_paid = models.BooleanField(default=False)
     exchanged_with_local = models.BooleanField(default=False)
+    cylinder_exchanged_with = models.ForeignKey(AssignedCylinders, on_delete=models.SET_NULL, null=True, blank=True, related_name="sales_as_exchanged" )
     expected_date_to_repay = models.DateField(blank=True, null=True)
     sales_person_payment_verified = models.BooleanField(default=False)
     admin_cash_verified = models.BooleanField(default=False)

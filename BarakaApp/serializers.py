@@ -142,6 +142,12 @@ class AddAssignedCylinder(serializers.ModelSerializer):
    
 class RecordSalesSerializer(serializers.ModelSerializer):
     customer = AddCustomerSerializer()
+    # cylinder_exchanged_with = serializers.CharField(required=False, allow_null=True)  # <-- Add this line
+    cylinder_exchanged_with = serializers.PrimaryKeyRelatedField(
+        queryset=AssignedCylinders.objects.all(),
+        required=False,
+        allow_null=True
+    )
 
     class Meta:
         model = SalesTab
@@ -810,6 +816,8 @@ class BulkAssignedCylinderSerializer(serializers.Serializer):
     sales_team = serializers.PrimaryKeyRelatedField(queryset=SalesTeam.objects.all())
     cylinder = serializers.PrimaryKeyRelatedField(queryset=CylinderStore.objects.all())
     assigned_quantity = serializers.IntegerField()
+    assignedCylinderId = serializers.IntegerField(required=False, allow_null=True)  # <-- Add this line
+
 
     def validate(self, data):
         cylinder_store = data.get('cylinder')
@@ -878,6 +886,7 @@ class SalesRecordSerializer(serializers.ModelSerializer):
     sales_person = serializers.SerializerMethodField()
     customer = Customerserializer(read_only=True)
     product = AssignedCylinderSerializerrr(read_only=True)
+    cylinder_exchanged_with = AssignedCylinderSerializerrr(read_only=True)
     debt_info = serializers.SerializerMethodField()
     sales_transaction = SalesTransactionSerializer(read_only=True)
     class Meta:
@@ -962,4 +971,14 @@ class AllCylinderRequestSerializer(serializers.ModelSerializer):
     requesting_team = SalesTeamSerializer()
     class Meta:
         model = CylinderRequestTransfer
+        fields = '__all__'
+
+
+
+
+
+class MonthlySalarySerializer(serializers.ModelSerializer):
+    employee = EmployeeExpensesSerializer()
+    class Meta:
+        model = MonthlySalary
         fields = '__all__'
