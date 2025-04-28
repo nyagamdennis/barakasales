@@ -79,4 +79,5 @@ urlpatterns = [
     path('cash/', views.CashHandoutOperation.as_view()),
     path('monthly-salary/<str:employee_id>/', views.MonthlySalaryOperation.as_view()),
     path('monthly-salary/', views.MonthlySalaryOperation.as_view()),
+    path('search-customer/', views.SearchCustomer.as_view())
 ]

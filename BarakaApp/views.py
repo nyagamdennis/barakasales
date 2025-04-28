@@ -13,7 +13,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.utils import IntegrityError
 from users.models import CustomUser
 from datetime import date
-
+from django.db.models import Q
 
 
 
@@ -2479,3 +2479,30 @@ class MonthlySalaryOperation(APIView):
         monthly_salary = MonthlySalary.objects.get(employee=pk)
         serialize = MonthlySalarySerializer(monthly_salary, many=True)
         return Response(serialize.data, status=status.HTTP_200_OK)
+    
+
+
+
+class SearchCustomer(APIView):
+    def post(self, request):
+        search_query = request.data.get('query', '')
+
+        if not search_query:
+            return Response({'error': 'No search query provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        customers = Customers.objects.filter(
+            Q(name__icontains=search_query) | Q(phone__icontains=search_query)
+        ).select_related('location')  # optimize if you use location data later
+
+        customer_data = [
+            {
+                "id": customer.id,
+                "name": customer.name,
+                "phone": customer.phone,
+                "location": customer.location.name,
+                "sales_type": customer.sales
+            }
+            for customer in customers
+        ]
+        print('resposnse data ', customer_data)
+        return Response(customer_data, status=status.HTTP_200_OK)

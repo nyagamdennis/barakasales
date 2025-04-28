@@ -389,10 +389,9 @@ class Customers(models.Model):
         (WHOLESALE, "Wholesale"),
         (RETAIL, "Retail"),
     ]
-    # creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     sales = models.CharField(max_length=200,choices=SALES_CHOICES)
     name = models.CharField(max_length=200)
-    phone = models.IntegerField(null=True, blank=True)
+    phone = models.CharField(max_length=15 ,null=True, blank=True)
     location = models.ForeignKey(Locations, on_delete=models.CASCADE)
     date_aded = models.DateTimeField(auto_now_add=True)
     
