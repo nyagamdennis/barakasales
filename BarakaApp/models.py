@@ -343,6 +343,10 @@ class AssignedOtherProductRecipt(models.Model):
     #     return self.assigned_quantity
 
 
+class CylindersExchange(models.Model):
+    original_cylinder = models.ForeignKey(AssignedCylinders, on_delete=models.CASCADE, related_name="original")
+    exchanged_with = models.ForeignKey(AssignedCylinders, on_delete=models.SET_NULL, null=True, blank=True, related_name='exchanged_with')
+    amount = models.PositiveIntegerField(default=0)
 
 
 class CylinderLost(models.Model):

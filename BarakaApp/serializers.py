@@ -598,7 +598,10 @@ class AssignedCylinderSerializer(serializers.ModelSerializer):
         assigned_cylinder = AssignedCylinders.objects.create(**validated_data)
         return assigned_cylinder
     
-
+class CylindersExchangeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CylindersExchange
+        fields = '__all__'
 
 class AssignedCylinderSerializerrr(serializers.ModelSerializer):
     gas_type = serializers.CharField(source="cylinder.cylinder.gas_type.name", read_only=True)
@@ -625,11 +628,17 @@ class AssignedCylinderSerializerrr(serializers.ModelSerializer):
     max_retail_selling_price = serializers.IntegerField(source="cylinder.cylinder.max_retail_selling_price", read_only=True)
     max_retail_refil_price = serializers.IntegerField(source="cylinder.cylinder.max_retail_refil_price", read_only=True)
 
+
+    # exchanged_with = CylindersExchangeSerializer(many = True, read_only = True)
+    exchanges_as_original = CylindersExchangeSerializer(source="original", many=True, read_only=True)
+    exchanges_as_exchanged = CylindersExchangeSerializer(source="exchanged_with", many=True, read_only=True)
     class Meta:
         model = AssignedCylinders
         fields = [
             "id",
             "sales_team",
+            "exchanges_as_original",
+            "exchanges_as_exchanged",
             "cylinder",
             "gas_type",  # Include gas type
             "weight",    # Include gas weight
