@@ -177,6 +177,7 @@ def record_sales(request):
         if cylinder_exchanged_with:
             try:
                 exchanged_cylinder = AssignedCylinders.objects.get(id=cylinder_exchanged_with)
+                
                 formdata['cylinder_exchanged_with'] = exchanged_cylinder.id
                 exchanged_cylinder.empties += 1
                 exchanged_cylinder.save()
@@ -184,7 +185,6 @@ def record_sales(request):
                 return Response({'error': f'Cylinder with ID  does not exist'}, status=status.HTTP_400_BAD_REQUEST)
         else:
             formdata['cylinder_exchanged_with'] = None
-        
         
         # Assign sales team
         try:
@@ -251,17 +251,6 @@ def record_sales(request):
                 assigned_product.retail_sold += assigned_quantity
                 
             assigned_product.save()
-
-
-            if exchanged_cylinder:
-                exchange_cylinder = AssignedCylinders.objects.get(id=cylinder_exchanged_with)
-                original_product = AssignedCylinders.objects.get(id=product_id)
-                exchanges = CylindersExchange.objects.create(
-                    original_cylinder = original_product,
-                    exchanged_with = exchange_cylinder,
-                    amount = 1
-                )
-                exchanges.save()
 
             # Create the sales record
             formdata['product'] = product_id
