@@ -2266,8 +2266,13 @@ class EmployeeDetails(APIView):
 class EmployeeSalary(APIView):
     def patch(self, request, pk):
         data = request.data
+        salary = data.get('contract_salary')
+        salaryDate = data.get('date_joined')
         employee = get_object_or_404(Employees, pk=pk)
-        employee.contract_salary = data.get('contract_salary')
+        if salary:
+            employee.contract_salary = salary
+        elif salaryDate:
+            employee.date_joined = salaryDate
         employee.save()
 
         serialize = EmployeesSerializer(employee)
