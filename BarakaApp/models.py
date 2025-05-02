@@ -145,10 +145,12 @@ class Advances(models.Model):
 
 
 class MonthlySalary(models.Model):
+    # reference_number = models.CharField(max_length=100, unique=True, blank=True, null=True)
     employee = models.ForeignKey(Employees, on_delete=models.CASCADE)
     is_paid = models.BooleanField(default=False)
-    amount = models.PositiveIntegerField()
-    payment_date = models.DateField()
+    amount = models.PositiveIntegerField(null=True, blank=True)
+    payment_date = models.DateField(null=True, blank=True)
+    paid_on = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f'{self.employee.first_name} {self.employee.last_name} - {self.payment_date}'

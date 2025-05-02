@@ -68,6 +68,7 @@ urlpatterns = [
     path('team-expenses/<str:salesTeam_id>/', views.TeamExpensesOperation.as_view()),
     path('employees/<str:pk>/', views.single_employees, name='single-employees'),
     path('salary/<str:pk>/', views.EmployeeSalary.as_view(), name='salary-employees'),
+    path('employee-monthly-salary/<str:pk>/', views.EmployeeMonthlySalaryOperation.as_view()),
     path('advances/<str:employeeId>/', views.AdvancesOperation.as_view()),
     path('clear-advances/<str:pk>/resolve/', views.resolve_advances.as_view(), name='resolve-advances'),
     path('cylinder-request/', views.CylinderRequest.as_view(), name='cylinder-request'),

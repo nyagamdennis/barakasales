@@ -1906,7 +1906,7 @@ class ExpensesOperation(APIView):
 class CashHandoutOperation(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request, employee_id):
-        print('request data ', request.data)
+        
         
         # today = date.today()
         sales_team_id = int(request.data.get('sales_team'))
@@ -2269,6 +2269,7 @@ class EmployeeSalary(APIView):
         salary = data.get('contract_salary')
         salaryDate = data.get('date_joined')
         employee = get_object_or_404(Employees, pk=pk)
+       
         if salary:
             employee.contract_salary = salary
         elif salaryDate:
@@ -2279,6 +2280,56 @@ class EmployeeSalary(APIView):
 
         return Response(serialize.data, status=status.HTTP_200_OK)
     
+
+
+class EmployeeMonthlySalaryOperation(APIView):
+    # permission_classes  = [IsAuthenticated]
+    def get(self, request, pk):
+        print('getting salary')
+        # dates = request.data.get('dates')
+        monthly_salary = MonthlySalary.objects.filter(employee=pk)
+        monthly_serializer = MonthlySalarySerializer(monthly_salary, many=True)
+        
+        return Response(monthly_serializer.data, status=status.HTTP_200_OK)
+    
+
+    def post(self, request, pk):
+        try:
+            # Retrieve the employee instance
+            employee = Employees.objects.get(pk=pk)
+
+            # Extract data from the request
+            amount = request.data.get('amount')
+            payment_date = request.data.get('payment_date')
+
+            if not amount or not payment_date:
+                return Response(
+                    {"error": "Both 'amount' and 'payment_date' are required."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Create a new MonthlySalary record
+            monthly_salary = MonthlySalary.objects.create(
+                employee=employee,
+                amount=amount,
+                payment_date=payment_date,
+                is_paid=True  
+            )
+
+            # Serialize and return the created record
+            monthly_serializer = MonthlySalarySerializer(monthly_salary)
+            return Response(monthly_serializer.data, status=status.HTTP_201_CREATED)
+
+        except Employees.DoesNotExist:
+            return Response(
+                {"error": "Employee not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"An unexpected error occurred: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class AdvancesOperation(APIView):

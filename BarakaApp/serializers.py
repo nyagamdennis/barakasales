@@ -991,3 +991,6 @@ class MonthlySalarySerializer(serializers.ModelSerializer):
     class Meta:
         model = MonthlySalary
         fields = '__all__'
+
+
+
