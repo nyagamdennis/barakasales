@@ -15,7 +15,7 @@ class SubsriptionsSerializers(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class BusinessDetailsSerializer(models.Model):
+class BusinessDetailsSerializer(serializers.ModelSerializer):
     class Meta:
         model = BusinessDetails
         fields = '__all__'
