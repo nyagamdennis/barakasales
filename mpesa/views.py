@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from rest_framework.response import Response
 from rest_framework import status
 from .models import *
+from Business.models import *
 from .serializers import *
 from rest_framework.views import APIView
 
@@ -9,6 +10,23 @@ from rest_framework.views import APIView
 
 
 # Create your views here.
+class SubriptionPayment(APIView):
+    def post(self, request, pk):
+        subscription_plan = request.data.get('plan')
+        phone_number = request.data.get('phone_number')
+        business = request.data.get('business')
+
+        try:
+            subpription = SubScriptionOptions.objects.get(pk=subsciption_plan)
+        except SubScriptions.DoesNotExist:
+            return Response('Select a valid subscription.')
+
+        # try:
+        #     employee = Employees.objects.get(user__id=user_id.id)
+        #     sales_team = employee.sales_team.id
+        # except Employees.DoesNotExist:
+        #     sales_team = None
+        return Response('sueccess')
 
 
 class mpesatransactions(APIView):

@@ -782,7 +782,7 @@ def sendbulksms(request):
 class get_sales_team(APIView):
     def get(self, request):
         sales_team = SalesTeam.objects.order_by('-date_created')
-        serialize = SalesTeamSerializer(sales_team, many=True)
+        serialize = SalesTeamSerializer(sales_team, many=True, context={'request': request})
         return Response(serialize.data)
     
     def patch(self, request, pk):
@@ -2285,7 +2285,6 @@ class EmployeeSalary(APIView):
 class EmployeeMonthlySalaryOperation(APIView):
     # permission_classes  = [IsAuthenticated]
     def get(self, request, pk):
-        print('getting salary')
         # dates = request.data.get('dates')
         monthly_salary = MonthlySalary.objects.filter(employee=pk)
         monthly_serializer = MonthlySalarySerializer(monthly_salary, many=True)
