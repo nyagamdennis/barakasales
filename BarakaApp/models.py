@@ -1,16 +1,18 @@
 from django.db import models
 from users.models import CustomUser
 from datetime import datetime
+from Business.models import BusinessDetails
 
 
 class ProductCategory(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     name = models.CharField(max_length=200)
 
     def __str__(self):
         return self.name
 
 class Locations(models.Model):
-
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     name = models.CharField(max_length=200)
     
     def __str__(self):
@@ -19,6 +21,7 @@ class Locations(models.Model):
 
 
 class OtherProducts(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     name = models.CharField(max_length=200)
     whole_sales_price = models.PositiveIntegerField(default=0)
     retail_sales_price = models.PositiveIntegerField(default=0)
@@ -30,6 +33,7 @@ class OtherProducts(models.Model):
 
 
 class CylinderWeight(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     weight =  models.IntegerField()
     
     def __str__(self):
@@ -38,6 +42,7 @@ class CylinderWeight(models.Model):
 
     
 class CylinderType(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     name = models.CharField(max_length=200)
     date_added = models.DateTimeField(auto_now_add=True)
     
@@ -46,8 +51,10 @@ class CylinderType(models.Model):
     
     
 class Cylinder(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     gas_type = models.ForeignKey(CylinderType, on_delete=models.CASCADE)
     weight = models.ForeignKey(CylinderWeight, on_delete=models.CASCADE)
+    depot_refill_price = models.PositiveIntegerField(default=0)
     min_wholesale_selling_price = models.PositiveIntegerField(default=0)
     min_wholesale_refil_price = models.PositiveIntegerField(default=0)
     min_retail_selling_price = models.PositiveIntegerField(default=0)
@@ -67,6 +74,7 @@ class Cylinder(models.Model):
 
 
 class CylinderStore(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     cylinder = models.ForeignKey(Cylinder, on_delete=models.CASCADE)
     filled = models.PositiveIntegerField(default=0)
     empties = models.PositiveIntegerField(default=0)
@@ -83,6 +91,7 @@ class CylinderStore(models.Model):
 
 
 class Employees(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     MALE = 'MALE'
     FEMALE = 'FEMALE'
     
@@ -90,13 +99,14 @@ class Employees(models.Model):
         (MALE, 'Male'),
         (FEMALE,'Female')
     ]
+    
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    first_name = models.CharField(max_length=200)
-    last_name = models.CharField(max_length=200)
+    first_name = models.CharField(max_length=200, null=True, blank=True)
+    last_name = models.CharField(max_length=200, null=True, blank=True)
     id_number = models.CharField(max_length=10, blank=True, null=True)
     phone = models.CharField(max_length=15, blank=True, null=True)
     alternative_phone = models.CharField(max_length=15 ,null=True, blank=True)
-    gender = models.CharField(max_length=200, choices=gender_choice)
+    gender = models.CharField(max_length=200, choices=gender_choice, blank=True, null=True)
     profile_image = models.ImageField(upload_to='profile', null=True, blank=True)
     front_id = models.ImageField(upload_to='id_pictures', null=True, blank=True)
     back_id = models.ImageField(upload_to='id_pictures', blank=True, null=True)
@@ -124,6 +134,7 @@ class Employees(models.Model):
 
 
 class CashDefault(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     employee = models.ForeignKey(Employees, on_delete=models.CASCADE)
     cash_at_hand = models.PositiveIntegerField(default=0)
     amount_deficit = models.PositiveIntegerField(default=0)
@@ -136,6 +147,7 @@ class CashDefault(models.Model):
 # class Defau
 
 class Advances(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     employee = models.ForeignKey(Employees, on_delete=models.CASCADE)
     amount = models.PositiveIntegerField()
     date_issued = models.DateField()
@@ -146,6 +158,7 @@ class Advances(models.Model):
 
 
 class MonthlySalary(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     # reference_number = models.CharField(max_length=100, unique=True, blank=True, null=True)
     employee = models.ForeignKey(Employees, on_delete=models.CASCADE)
     is_paid = models.BooleanField(default=False)
@@ -160,6 +173,7 @@ class MonthlySalary(models.Model):
     
 
 class DefaultedProducts(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     employee = models.ForeignKey(Employees, on_delete=models.CASCADE)
     cylinder = models.ForeignKey(CylinderStore, on_delete=models.CASCADE, null=True, blank=True)
     other_products = models.ForeignKey(OtherProducts, on_delete=models.CASCADE, null=True, blank=True)
@@ -172,7 +186,9 @@ class DefaultedProducts(models.Model):
 
 
 
+
 class TypeOfSalesTeam(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     name = models.CharField(max_length=50)
 
     def __str__(self) -> str:
@@ -180,6 +196,7 @@ class TypeOfSalesTeam(models.Model):
     
 
 class SalesTeam(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     type_of_sales_team = models.ForeignKey(TypeOfSalesTeam, on_delete=models.CASCADE, null=True, blank=True)
     profile_image = models.ImageField(upload_to='sales_team_profile', null=True, blank=True)
     name = models.CharField(max_length=200)
@@ -191,6 +208,7 @@ class SalesTeam(models.Model):
     
     
 class AssignedCylinders(models.Model):
+    # business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     sales_team = models.ForeignKey(SalesTeam, on_delete=models.CASCADE, related_name='salesTeam')
     cylinder = models.ForeignKey(CylinderStore, on_delete=models.CASCADE)
@@ -274,6 +292,7 @@ class AssignedCylinders(models.Model):
 
 
 class CylinderRequestTransfer(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     requesting_team = models.ForeignKey(SalesTeam, on_delete=models.SET_NULL, null=True, blank=True)
     employee = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
     cylinder = models.ForeignKey(AssignedCylinders, on_delete=models.SET_NULL, null=True, blank=True)
@@ -287,6 +306,7 @@ class CylinderRequestTransfer(models.Model):
 
 
 class ReturnClylindersReciept(models.Model):
+    # business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     sales_team = models.ForeignKey(SalesTeam, on_delete=models.SET_NULL, null=True, blank=True)
     cylinder = models.ForeignKey(CylinderStore, on_delete=models.SET_NULL, null=True, blank=True)
     filled = models.PositiveIntegerField(default=0)
@@ -302,6 +322,7 @@ class ReturnClylindersReciept(models.Model):
 
 
 class AssignedCylindersRecipt(models.Model):
+    # business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     sales_team = models.ForeignKey(SalesTeam, on_delete=models.SET_NULL, null=True, blank=True)
     cylinder = models.ForeignKey(CylinderStore, on_delete=models.SET_NULL, null=True, blank=True)
     assigned_quantity = models.PositiveIntegerField(default=0)
@@ -313,6 +334,7 @@ class AssignedCylindersRecipt(models.Model):
 
 
 class AssignedCylindersReciept(models.Model):
+    # business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     unique_code = models.CharField(max_length=200, blank=True, null=True)
     sales_team = models.ForeignKey(SalesTeam, on_delete=models.SET_NULL, null=True, blank=True)
     assigned_cylinders = models.ForeignKey(AssignedCylinders, on_delete=models.SET_NULL, null=True, blank=True)
@@ -322,6 +344,7 @@ class AssignedCylindersReciept(models.Model):
 
 
 class AssignedOtherProducts(models.Model):
+    # business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     sales_team = models.ForeignKey(SalesTeam, on_delete=models.CASCADE, related_name='other_products_salesTeam')
     product = models.ForeignKey(OtherProducts, on_delete=models.SET_NULL, null=True, blank=True)
@@ -336,6 +359,7 @@ class AssignedOtherProducts(models.Model):
 
 
 class AssignedOtherProductRecipt(models.Model):
+    # business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     sales_team = models.ForeignKey(SalesTeam, on_delete=models.SET_NULL, null=True, blank=True)
     product = models.ForeignKey(OtherProducts, on_delete=models.SET_NULL, null=True, blank=True)
     assigned_quantity = models.PositiveIntegerField(default=0)
@@ -347,12 +371,14 @@ class AssignedOtherProductRecipt(models.Model):
 
 
 class CylindersExchange(models.Model):
+    # business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     original_cylinder = models.ForeignKey(AssignedCylinders, on_delete=models.CASCADE, related_name="original")
     exchanged_with = models.ForeignKey(AssignedCylinders, on_delete=models.SET_NULL, null=True, blank=True, related_name='exchanged_with')
     amount = models.PositiveIntegerField(default=0)
 
 
 class CylinderLost(models.Model):
+    # business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     employee = models.ForeignKey(Employees, on_delete=models.SET_NULL, null=True, blank=True)
     cylinder = models.ForeignKey(AssignedCylinders, on_delete=models.SET_NULL, null=True, blank=True)
     number_of_empty_cylinder = models.PositiveIntegerField(default=0)
@@ -364,6 +390,7 @@ class CylinderLost(models.Model):
     #     return Self.employee
 
 class CylinderLessPay(models.Model):
+    # business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     employee = models.ForeignKey(Employees, on_delete=models.SET_NULL, null=True, blank=True)
     cylinder = models.ForeignKey(AssignedCylinders, on_delete=models.SET_NULL, null=True, blank=True)
     cylinders_less_pay = models.PositiveIntegerField(default=0)
@@ -376,6 +403,7 @@ class CylinderLessPay(models.Model):
 
 
 class CashHandOut(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     employee = models.ForeignKey(Employees, on_delete=models.SET_NULL, null=True, blank=True)
     sales_team = models.ForeignKey(SalesTeam, on_delete=models.SET_NULL, null=True, blank=True)
     cash = models.PositiveIntegerField(default=0)
@@ -390,6 +418,7 @@ class CashHandOut(models.Model):
 
 
 class Customers(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     WHOLESALE = "WHOLESALE"
     RETAIL = "RETAIL"
     SALES_CHOICES = [
@@ -408,6 +437,7 @@ class Customers(models.Model):
    
     
 class TypeOfSale(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     name = models.CharField(max_length=200)
     
     def __str__(self):
@@ -416,6 +446,7 @@ class TypeOfSale(models.Model):
 
         
 class SalesTab(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     COMPLETESALE = "COMPLETESALE"
     REFILL = "REFILL"
     SALES_TYPE = [
@@ -461,6 +492,7 @@ class SalesTab(models.Model):
 
 
 class SalesTransaction(models.Model):
+       business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
        sales = models.ForeignKey(SalesTab, on_delete=models.SET_NULL, null=True, blank=True,related_name="sales_transaction")
        mpesa_code = models.CharField(max_length=200, blank=True, null=True)
        second_mpesa_code = models.CharField(max_length=200, blank=True, null=True)
@@ -469,6 +501,7 @@ class SalesTransaction(models.Model):
 
 
 class OtherProductsSalesTab(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     WHOLESALE = "WHOLESALE"
     RETAIL = "RETAIL"
     SALES_CHOICES = [
@@ -495,6 +528,7 @@ class OtherProductsSalesTab(models.Model):
         return f'{self.customer.name} bought {self.quantity}'
     
 class Dbts(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     # authorized_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     creator = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
     sales_team = models.ForeignKey(SalesTeam, on_delete=models.SET_NULL, null=True, blank=True)
@@ -510,6 +544,7 @@ class Dbts(models.Model):
     
     
 class OtherProductsDbts(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     # authorized_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     creator = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
     sales_team = models.ForeignKey(SalesTeam, on_delete=models.SET_NULL, null=True, blank=True)
@@ -525,6 +560,7 @@ class OtherProductsDbts(models.Model):
     
     
 class CreditTransaction(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     customer = models.ForeignKey(Customers, on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -535,6 +571,7 @@ class CreditTransaction(models.Model):
         return f'{self.customer.name} paid {self.amount}'
         
 class Messages(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     # business = models.ForeignKey(Business, on_delete=models.CASCADE)
     sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     customer = models.ManyToManyField(Customers, blank=True)
@@ -552,6 +589,7 @@ class Messages(models.Model):
 
 
 class Expenses(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     COMPANY = 'COMPANY'
     EMPLOYEE = 'EMPLOYEE'
     
@@ -570,3 +608,19 @@ class Expenses(models.Model):
 
     def __str__(self) -> str:
         return self.name
+    
+
+class CylindersRefilled(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.SET_NULL, blank=True, null=True)
+    cylinder = models.ForeignKey(CylinderStore, on_delete=models.SET_NULL, null=True, blank=True)
+    quantity = models.PositiveIntegerField(default=0)
+    
+
+
+
+
+
+class CylinderDepotReport(models.Model):
+    business = models.ForeignKey(BusinessDetails, on_delete=models.SET_NULL, null=True, blank=True)
+    cylinders_refilled = models.ManyToManyField(CylindersRefilled)
+    depot_date = models.DateTimeField(auto_now_add=True)

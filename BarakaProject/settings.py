@@ -13,8 +13,12 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 import os
 from datetime import timedelta
+# from dotenv import load_dotenv
+
+# load_dotenv() 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
 
 
 # Quick-start development settings - unsuitable for production
@@ -26,10 +30,12 @@ SECRET_KEY = 'django-insecure-hun38i=qr#@p-5l4cizf@3jjvf)ptdewqkq%6-s-q3ux4lv@0o
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+
 ALLOWED_HOSTS = [
-    
+    '7583-154-159-252-12.ngrok-free.app',
     'murildennis.pythonanywhere.com',
     '127.0.0.1',
+    'localhost',
     'localhost:3000',
     'localhost:5173',
     'barakagas.pythonanywhere.com',
@@ -40,7 +46,8 @@ ALLOWED_HOSTS = [
 # Application definition
 
 INSTALLED_APPS = [
-    'BarakaApp',
+  
+    'BarakaApp.apps.BarakaappConfig',
     'users',
     'mpesa',
     'Business',
@@ -51,7 +58,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework_api_key',
     'corsheaders',
+    'channels',
 ]
 
 MIDDLEWARE = [
@@ -85,6 +94,16 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'BarakaProject.wsgi.application'
 
+ASGI_APPLICATION = "BarakaProject.wsgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
@@ -132,11 +151,13 @@ USE_I18N = True
 USE_TZ = True
 
 
+
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+# STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')

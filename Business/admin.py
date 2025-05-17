@@ -5,3 +5,6 @@ from .models import *
 admin.site.register(BusinessDetails)
 admin.site.register(SubScriptionOptions)
 admin.site.register(Features)
+admin.site.register(BusinessAPIKey)
+admin.site.register(SubScriptionPayment)
+admin.site.register(MpesaTransaction)

@@ -546,6 +546,7 @@ class CylinderCreateSerializer(serializers.Serializer):
     max_wholesale_refil_price = serializers.IntegerField()
     max_retail_selling_price = serializers.IntegerField()
     max_retail_refil_price = serializers.IntegerField()
+    empty_cylinder_price = serializers.IntegerField()
     filled = serializers.IntegerField()
     empties = serializers.IntegerField()
     spoiled = serializers.IntegerField()

@@ -7,7 +7,10 @@ from .serializers import *
 from rest_framework.views import APIView
 
 
-
+consumer_secreat = 'pl3OTZoXIXcD7f8LVV45tAcBdHuWNMcIPgDVUBsweR9cTIRUvQ9wG3FQO1oV5TQl'
+consumer_key = '0D0qMRldan4CFROHxAt4XbOtcquGsb6uNsH508qisJE9q5Mj'
+mpesa_url = 'https://sandbox.safaricom.co.ke/mpesa/c2b/v1/registerurl'
+initiate_payment_url = 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest'
 
 # Create your views here.
 class SubriptionPayment(APIView):
@@ -26,7 +29,7 @@ class SubriptionPayment(APIView):
         #     sales_team = employee.sales_team.id
         # except Employees.DoesNotExist:
         #     sales_team = None
-        return Response('sueccess')
+        # return Response('sueccess')
 
 
 class mpesatransactions(APIView):

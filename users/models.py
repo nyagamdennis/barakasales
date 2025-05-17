@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser, Group, Permission, BaseUserManager
 from django.db import models
+from Business.models import BusinessDetails
 
 
 
@@ -33,6 +34,17 @@ class CustomUser(AbstractUser):
     username = None
     email = models.EmailField(unique=True)
     phone_number = models.CharField(max_length=15, unique=True)
+
+
+    is_owner = models.BooleanField(default=False)  # Business owner role
+    is_employee = models.BooleanField(default=False)
+    business = models.ForeignKey(
+        BusinessDetails,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="users"
+    )
     
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['phone_number']
@@ -48,11 +60,12 @@ class CustomUser(AbstractUser):
     class Meta:
         permissions = [
             ("is_employee", "Can act as an employee"),
+            ("is_owner", "Can act as a business owner"),
         ]
 
 
     def __str__(self):
-        return self.email
+        return f"{self.email} ({'Owner' if self.is_owner else 'Employee'})"
 
 
 # print("App Label for CustomUser:", CustomUser._meta.app_label)
