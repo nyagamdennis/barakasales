@@ -17,6 +17,11 @@ import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from django.db.models import Q
 from .real_time_utils import broadcast_employee_status
+from collections import defaultdict
+from sales_ai.models import RefillCostAnalysis, CompanyExpenses
+from datetime import date
+
+
 
 
 
@@ -65,12 +70,17 @@ def sales_func(request):
     return Response(sales_serialize.data)
 
 
-@api_view(['GET'])
-def location_func(request):
-    location = Locations.objects.all()
-    location_serialize = CustomerLocationSerializer(location, many=True)
-    
-    return Response(location_serialize.data)
+
+class location_func(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        business = BusinessDetails.objects.get(owner=request.user)
+        # print('business  ', business)
+        location = Locations.objects.filter(business=business)
+        # print('locations  ', location)
+        location_serialize = CustomerLocationSerializer(location, many=True)
+        
+        return Response(location_serialize.data)
 
 
 @api_view(['GET'])
@@ -105,17 +115,28 @@ def record_sales(request):
         return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
     
     if request.method == 'POST':
-        print('sales data ', request.data)
         user_id = request.user
-        custom_user_id = user_id.id
+        business = user_id.business
+        print('user sales owner ', user_id)
         
 
         # Get the user's sales team
         try:
             employee = Employees.objects.get(user__id=user_id.id)
             sales_team = employee.sales_team.id
+
         except Employees.DoesNotExist:
-            sales_team = None
+            return Response({'error':'you are not allowed to perform sales.'})
+            
+        
+       
+        # Find the business of the employee if an employee is found
+        # business = None
+        if employee:
+            business = employee.business if employee.business else None
+            print('business found ', business)
+        
+        # try:
 
         formdata = {}
         user_id = request.user.id
@@ -131,21 +152,23 @@ def record_sales(request):
         name = customer.get('name', '')
         phone = customer.get('phone', None)
         location = customer.get('location', {}).get('name', '')
+        if location:
+            customer['location']['business'] = business.id
 
         if not name  or not location:
             if type_of_sale == "RETAIL":
                 customer['name'] = 'no_name'
                 customer['phone'] = '0700000000'
-                # customer['location'] = 'not_known'
-                customer['location'] = {'name': 'not_known'}
+                customer['business'] = business.id
+                customer['location'] = {'name': 'not_known', 'business': business.id}
 
             elif type_of_sale == "WHOLESALE":
                 customer['name'] = 'unknown'
                 customer['phone'] = '0711111111'
-                # customer['location'] = 'not_known'
-                customer['location'] = {'name': 'not_known'}
+                customer['business'] = business.id
+                customer['location'] = {'name': 'not_known',  'business': business.id}
 
-        
+        customer['business'] = business.id
         formdata['customer'] = customer
         cylinder_exchanged_with = myDict.get('cylinder_exchanged_with', None)
         formdata['sales_type'] = myDict['sales_type']
@@ -169,6 +192,7 @@ def record_sales(request):
        
         
         formdata['sales_person'] = request.user.id
+        formdata['business'] = business.id
         formdata['sales_team'] = sales_team
         
         cc = formdata['customer']
@@ -806,7 +830,7 @@ class get_sales_team(APIView):
         serializer = SalesTeamSerializer(sales_team, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
@@ -865,16 +889,35 @@ def sales_team_management(request):
 
 
 
-@api_view(['POST'])
-def createteam(request):
-    
-    serializer = CreateSalesTeamSerializer(data=request.data, context={'request': request})
-    try:
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    except serializers.ValidationError as e:
-        return Response({'errors': e.detail}, status=status.HTTP_400_BAD_REQUEST)
+# @api_view(['POST'])
+class createteam(APIView):
+    def post(self,request):
+        business = BusinessDetails.objects.get(owner=request.user)
+        data = request.data.copy()
+        team_type = data.get('type')
+        if team_type:
+            if team_type == 'retail':
+                try:
+                    retail_type = TypeOfSalesTeam.objects.get(name__iexact='retail')
+                    data['type_of_sales_team'] = retail_type.id
+                except TypeOfSalesTeam.DoesNotExist:
+                    return Response({'error': 'Type "retail" not found'}, status=status.HTTP_400_BAD_REQUEST)
+            elif team_type == 'wholesale':
+                try:
+                    wholesale_type = TypeOfSalesTeam.objects.get(name__iexact='wholesale')
+                    data['type_of_sales_team'] = wholesale_type.id
+                except TypeOfSalesTeam.DoesNotExist:
+                    return Response({'error': 'Type "wholesale" not found'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            data['type_of_sales_team'] = None
+        data['business'] = business.id
+        serializer = CreateSalesTeamSerializer(data=data, context={'request': request})
+        try:
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except serializers.ValidationError as e:
+            return Response({'errors': e.detail}, status=status.HTTP_400_BAD_REQUEST)
     
     
     
@@ -909,28 +952,31 @@ class OtherProductsViews(APIView):
     def post(self, request, pk):
         print('other products data ', request.data)
         product_name = request.data.get('name', '').strip()
-        if OtherProducts.objects.filter(name__iexact=product_name, business = pk).exists():
+
+        if OtherProducts.objects.filter(name__iexact=product_name, business=pk).exists():
             return Response(
                 {'error': 'Product with this name already exists.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-
-        # products = OtherProducts.objects.filter(name=request.data['name'])
-        
-        # print('products ', products)
         data = request.data.copy()
         data['business'] = pk
-        # business = business.objects.get(pk=pk)
+
         serializer = CreateOtherProductsSerializer(data=data)
         try:
             serializer.is_valid(raise_exception=True)
-            serializer.save()
+            product = serializer.save()  # ← this gives you the newly created product instance
+
+            # ✅ Create purchase report entry
+            OtherProductsPurchaseReport.objects.create(
+                product=product,
+                price=(product.product_buying_price * product.quantity)
+            )
+
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except serializers.ValidationError as e:
-            # print('error ', e.default_detail)
             return Response({'errors': e.detail}, status=status.HTTP_400_BAD_REQUEST)
-    
+
     
     def patch(self, request, pk):
         try:
@@ -953,6 +999,7 @@ class OtherProductsViews(APIView):
 
         product.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class RefillOperations(APIView):
     def post(self, request):
@@ -1022,6 +1069,7 @@ class AddNewCylinder(APIView):
         max_retail_selling_price = data['max_retail_selling_price']
         max_retail_refil_price = data['max_retail_refil_price']
         empty_cylinder_price = data['empty_cylinder_price']
+        depot_refill_price = data['depot_refill_price']
         filled = data['filled']
         empties = data['empties']
         spoiled = data['spoiled']
@@ -1055,6 +1103,7 @@ class AddNewCylinder(APIView):
                 max_retail_selling_price=max_retail_selling_price,
                 max_retail_refil_price=max_retail_refil_price,
                 empty_cylinder_price=empty_cylinder_price,
+                depot_refill_price=depot_refill_price,
             )
 
         # Add the cylinder to CylinderStore
@@ -1098,6 +1147,7 @@ class updateThiscylinder(APIView):
 
         weight_instance, _ = CylinderWeight.objects.get_or_create(weight=int(weight_value), business=business)
 
+        print('all here, ', request.data)
         # Update Cylinder fields
         cylinder.weight = weight_instance
         cylinder.min_wholesale_selling_price = request.data.get('min_wholesale_selling_price', cylinder.min_wholesale_selling_price)
@@ -1109,6 +1159,7 @@ class updateThiscylinder(APIView):
         cylinder.max_retail_selling_price = request.data.get('max_retail_selling_price', cylinder.max_retail_selling_price)
         cylinder.max_retail_refil_price = request.data.get('max_retail_refill_price', cylinder.max_retail_refil_price)
         cylinder.empty_cylinder_price = request.data.get('empty_cylinder_price', cylinder.empty_cylinder_price)
+        cylinder.depot_refill_price = request.data.get('depot_refill_price', cylinder.depot_refill_price)
 
         cylinder.save()
 
@@ -1200,6 +1251,7 @@ class AnotherCylinder(APIView):
             filled = int(request.data.get('filled', 0))
             spoiled = int(request.data.get('spoiled', 0))
             empty_cylinder_price = int(request.data.get('empty_cylinder_price', 0))
+            depot_refill_price = int(request.data.get('depot_refill_price', 0))
         except ValueError:
             return Response({'error': 'All numeric fields must contain valid integers'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1217,6 +1269,7 @@ class AnotherCylinder(APIView):
             max_retail_selling_price=max_retail_selling_price,
             max_retail_refil_price=max_retail_refil_price,
             empty_cylinder_price=empty_cylinder_price,
+            depot_refill_price=depot_refill_price,
         )
 
         # Create Store record
@@ -1937,6 +1990,11 @@ class ExpensesOperation(APIView):
 
     def post(self, request, employee_id):
         data = request.data.copy()
+        print('data ', data)
+        sales_team = data.get('sales_team')
+        team = SalesTeam.objects.get(pk=sales_team)
+        print('sales team business ', team.business)
+        data["business"] = team.business.id
         serializer = ExpensesSerializer(data=data, context={"request": request}, partial=True)
 
         if serializer.is_valid():
@@ -2073,19 +2131,22 @@ class SalesRecordsView(APIView):
 
         # Filter sales by the sales team
         sales = SalesTab.objects.filter(sales_team=sales_team).order_by('-date_sold')
+        # print('sales team data ', sales)
 
         # Serialize the sales data
         serializer = SalesRecordSerializer(sales, many=True, context={'request': request})
-        return Response(serializer.data, status=200)
+        
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class AdminSalesRecordsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        business = BusinessDetails.objects.get(owner=request.user)
         try:
             # Retrieve sales records ordered by date sold
-            sales = SalesTab.objects.order_by('-date_sold')
+            sales = SalesTab.objects.filter(business=business).order_by('-date_sold')
 
             # If no sales are found, return a meaningful response
             if not sales.exists():
@@ -2361,7 +2422,7 @@ class EmployeeSalary(APIView):
 
 
 class EmployeeMonthlySalaryOperation(APIView):
-    # permission_classes  = [IsAuthenticated]
+    permission_classes  = [IsAuthenticated]
     def get(self, request, pk):
         # dates = request.data.get('dates')
         monthly_salary = MonthlySalary.objects.filter(employee=pk)
@@ -2412,14 +2473,17 @@ class EmployeeMonthlySalaryOperation(APIView):
 
 
 class AdvancesOperation(APIView):
+    permission_classes = [IsAuthenticated]
     def get(self, request, employeeId):
         advance = Advances.objects.filter(employee=employeeId, resolved=False)
         serialize = AdvancesSerializer(advance, many=True)
         return Response(serialize.data, status=status.HTTP_200_OK)
     
     def post(self, request, employeeId):
-        serializer = AdvancesSerializer(
-            data=request.data)
+        business = BusinessDetails.objects.get(owner=request.user)
+        data = request.data.copy()
+        data["business"] = business.id
+        serializer = AdvancesSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -2478,9 +2542,9 @@ class CylinderRequest(APIView):
     def post(self, request):
         data = request.data.copy()  # Copy to safely modify
         
-
         try:
             employee = Employees.objects.get(user=request.user.id)  # Get employee linked to user
+            # print('employee business ', employee.business)
         except Employees.DoesNotExist:
             return Response({"error": "No Employee record found for this user"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -2503,6 +2567,8 @@ class CylinderRequest(APIView):
                 return Response(serializer.data, status=status.HTTP_200_OK)
 
         # If no existing request or given == True, create a new entry
+        business = employee.business.id
+        data["business"] = business
         serializer = CylinderRequestSerializer(data=data)
         if serializer.is_valid():
             serializer.save()  
@@ -2588,19 +2654,34 @@ class ExpensesOwnerOperation(APIView):
         if owner == 'Company':
             expense.expense_on_choice = Expenses.COMPANY
             expense.employee = None
-            print("Assigned to Company")
+            
+            expense.save()
+            CompanyExpenses.objects.create(
+                    business=expense.business,
+                    expense_name=expense.name,
+                    amount=expense.amount,
+                    date=date.today()
+                )
             # print('Company is ', data.get('owner'))
         else:
             print('Owner', data.get('Owner'))
             try:
                 employee = Employees.objects.get(pk=owner)
-                expense.expense_on_choice = Expenses.EMPLOYEE
-                expense.employee = employee
-                print("Assigned to Employee:", employee)
             except Employees.DoesNotExist:
                 return Response({"error": "Employee not found."}, status=status.HTTP_404_NOT_FOUND)
+            if expense.expense_on_choice == Expenses.COMPANY:
+                CompanyExpenses.objects.filter(
+                    business=expense.business,
+                    expense_name=expense.name,
+                    amount=expense.amount,
+                    date=date.today()
+                ).delete()
+            expense.expense_on_choice = Expenses.EMPLOYEE
+            expense.employee = employee
+            expense.save()
+            print("Assigned to Employee:", employee)
         # Update the expense with the new data
-        expense.save()
+        
         serializer = ExpensesSerializer(expense)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -2615,6 +2696,21 @@ class MonthlySalaryOperation(APIView):
             return Response({'error': "Salary not yet added."}, status=status.HTTP_404_NOT_FOUND)
         serialize = MonthlySalarySerializer(monthly_salary, many=True)
         return Response(serialize.data, status=status.HTTP_200_OK)
+    
+    def post(self, request, pk):
+        data = request.data.copy()
+
+        # try:
+
+
+        try:
+            monthly_salary = MonthlySalary.objects.get(employee=pk)
+        except MonthlySalary.DoesNotExist:
+            return Response({'error': "Salary not yet added."}, status=status.HTTP_404_NOT_FOUND)
+        serialize = MonthlySalarySerializer(monthly_salary, many=True)
+        return Response(serialize.data, status=status.HTTP_200_OK)
+    
+
     
 
 
@@ -2670,51 +2766,135 @@ class EmployeeStatusConsumer(AsyncWebsocketConsumer):
 
 class DeportRefillView(APIView):
     permission_classes = [IsAuthenticated]
+
     def post(self, request):
-        # data = request.data
-        # print('repair data ', data)
-        # return Response('success')
-        pk = request.data.get('id')
-        empties_to_refill = request.data.get('empties')
+        refill_data = request.data
 
-        if pk is None or empties_to_refill is None:
-            return Response({'error': 'ID and empties are required fields'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            empties_to_refill = int(empties_to_refill)
-        except ValueError:
-            return Response({'error': 'Empties must be a valid integer'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Get the CylinderStore instance or return a 404
-        store = get_object_or_404(CylinderStore, pk=pk)
-
-        # Check if there are enough empties to refill
-        if empties_to_refill > store.empties:
+        if not isinstance(refill_data, list):
             return Response(
-                {'error': 'Not enough empties available to refill'},
+                {'error': 'Expected a list of refill entries'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Update the fields
-        store.empties -= empties_to_refill
-        store.filled += empties_to_refill
-        store.save()
+        user = request.user
+        results = []
+        refilled_entries = []
 
-        # Return a success response with updated data
+        try:
+            business = BusinessDetails.objects.get(owner=user)
+        except BusinessDetails.DoesNotExist:
+            return Response(
+                {'error': 'Business not found for user'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        for entry in refill_data:
+            pk = entry.get('id') or entry.get('cylinder')
+            empties_to_refill = entry.get('refill_quantity')
+
+            if pk is None or empties_to_refill is None:
+                return Response(
+                    {'error': 'Each item must include "id" and "refill_quantity"'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            try:
+                empties_to_refill = int(empties_to_refill)
+            except ValueError:
+                return Response(
+                    {'error': f'Invalid quantity: {empties_to_refill}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Get CylinderStore or 404
+            store = get_object_or_404(CylinderStore, pk=pk)
+
+            if empties_to_refill > store.empties:
+                return Response(
+                    {'error': f'Not enough empties to refill for cylinder {store.id}. Available: {store.empties}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Apply refill operation
+            store.empties -= empties_to_refill
+            store.filled += empties_to_refill
+            store.save()
+
+            # Log in CylindersRefilled
+            refill_record = CylindersRefilled.objects.create(
+                business=business,
+                cylinder=store,
+                quantity=empties_to_refill
+            )
+
+            refilled_entries.append(refill_record)
+
+            results.append({
+                'id': store.id,
+                'empties': store.empties,
+                'filled': store.filled,
+                'spoiled': store.spoiled,
+                'total_cylinders': store.total_cylinders,
+                'message': f'Refilled {empties_to_refill} cylinders successfully'
+            })
+
+        # Extract unique Cylinder instances from refilled entries
+        refilled_cylinders = [
+    store.cylinder for store in (refill.cylinder for refill in refilled_entries if refill.cylinder)
+]
+
+        cylinders_unique = list(set(refilled_cylinders))
+
+        # Get associated cylinder types
+        # type_ids = list(set(cylinder.cylinder_type_id for cylinder in cylinders_unique))
+        type_ids = list(set(
+    cylinder.gas_type.id for cylinder in cylinders_unique
+    if hasattr(cylinder, 'gas_type') and cylinder.gas_type
+))
+
+
+
+        types = CylinderType.objects.prefetch_related(
+            'cylinder_set__cylinderstore_set',
+            'cylinder_set__weight'
+        ).filter(id__in=type_ids)
+
+        serialized = CylinderTypeSerializer(types, many=True)
+
+
+
+        # Group by weight
+        cost_analysis_map = defaultdict(lambda: {'quantity': 0, 'total_cost': 0})
+
+        for refill in refilled_entries:
+            store = refill.cylinder  # CylinderStore
+            cylinder = store.cylinder  # Cylinder
+            weight = cylinder.weight
+            quantity = refill.quantity
+            cost = quantity * cylinder.empty_cylinder_price
+
+            key = weight.id
+
+            cost_analysis_map[key]['quantity'] += quantity
+            cost_analysis_map[key]['total_cost'] += cost
+
+        # Save to RefillCostAnalysis
+        for weight_id, data in cost_analysis_map.items():
+            RefillCostAnalysis.objects.create(
+                business=business,
+                weight=CylinderWeight.objects.get(id=weight_id),
+                quantity=data['quantity'],
+                total_cost=data['total_cost'],
+                date=date.today()
+            )
+
         return Response(
             {
-                'message': 'Refill operation successful',
-                'updated_store': {
-                    'id': store.id,
-                    'empties': store.empties,
-                    'filled': store.filled,
-                    'spoiled': store.spoiled,
-                    'total_cylinders': store.total_cylinders,
-                }
+                "message": "Refill successful",
+                "updated_types": serialized.data
             },
             status=status.HTTP_200_OK
         )
-
     
 
 
@@ -2723,6 +2903,72 @@ class DeportRefillView(APIView):
 class DeportRepairView(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
-        data = request.data
-        print('repair data ', data)
-        return Response('success')
+        repair_data = request.data
+
+        if not isinstance(repair_data, list):
+            return Response({'error': 'Expected a list of repair entries'}, status=status.HTTP_400_BAD_REQUEST)
+
+        results = []
+        refilled_entries = []
+
+
+        user = request.user
+
+        try:
+            business = BusinessDetails.objects.get(owner=user)
+        except BusinessDetails.DoesNotExist:
+            return Response({'error': 'Business not found for user'}, status=status.HTTP_404_NOT_FOUND)
+
+
+        for entry in repair_data:
+            pk = entry.get('id') or entry.get('cylinder')
+            empties_to_refill = entry.get('refill_quantity')
+
+            if pk is None or empties_to_refill is None:
+                return Response({'error': 'Each item must include "id" and "refill_quantity"'}, status=status.HTTP_400_BAD_REQUEST)
+
+            try:
+                empties_to_refill = int(empties_to_refill)
+            except ValueError:
+                return Response({'error': f'Invalid quantity: {empties_to_refill}'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Get store or 404
+            store = get_object_or_404(CylinderStore, pk=pk)
+
+            if empties_to_refill > store.empties:
+                return Response(
+                    {'error': f'Not enough empties to refill for cylinder {store.id}. Available: {store.empties}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Apply refill operation
+            store.empties -= empties_to_refill
+            store.filled += empties_to_refill
+            store.save()
+
+            # 🔥 Log to CylindersRefilled
+            refill_record = CylindersRefilled.objects.create(
+                business=business,
+                cylinder=store,
+                quantity=empties_to_refill
+            )
+
+            refilled_entries.append(refill_record)
+            results.append({
+                'id': store.id,
+                'empties': store.empties,
+                'filled': store.filled,
+                'spoiled': store.spoiled,
+                'total_cylinders': store.total_cylinders,
+                'message': f'Refilled {empties_to_refill} cylinders successfully'
+            })
+            report = CylinderDepotReport.objects.create(business=business)
+            report.cylinders_refilled.set(refilled_entries)
+        return Response(
+            {
+                'message': 'Bulk refill operation successful',
+                'results': results
+            },
+            status=status.HTTP_200_OK
+        )
+    

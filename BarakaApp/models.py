@@ -25,6 +25,7 @@ class OtherProducts(models.Model):
     name = models.CharField(max_length=200)
     whole_sales_price = models.PositiveIntegerField(default=0)
     retail_sales_price = models.PositiveIntegerField(default=0)
+    product_buying_price = models.PositiveIntegerField(default=0)
     quantity = models.PositiveIntegerField(default=0)
     date_of_operation = models.DateTimeField(auto_now_add=True)
 
@@ -68,6 +69,7 @@ class Cylinder(models.Model):
     max_retail_selling_price = models.PositiveIntegerField(default=0)
     max_retail_refil_price = models.PositiveIntegerField(default=0)
     empty_cylinder_price = models.PositiveIntegerField(default=0)
+    date_added = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
         return f'{self.gas_type.name} {self.weight.weight}'
@@ -188,7 +190,6 @@ class DefaultedProducts(models.Model):
 
 
 class TypeOfSalesTeam(models.Model):
-    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
     name = models.CharField(max_length=50)
 
     def __str__(self) -> str:
@@ -446,7 +447,7 @@ class TypeOfSale(models.Model):
 
         
 class SalesTab(models.Model):
-    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
+    business = models.ForeignKey(BusinessDetails, on_delete=models.SET_NULL, null=True, blank=True)
     COMPLETESALE = "COMPLETESALE"
     REFILL = "REFILL"
     SALES_TYPE = [
@@ -492,7 +493,7 @@ class SalesTab(models.Model):
 
 
 class SalesTransaction(models.Model):
-       business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
+    #    business = models.ForeignKey(BusinessDetails, on_delete=models.CASCADE)
        sales = models.ForeignKey(SalesTab, on_delete=models.SET_NULL, null=True, blank=True,related_name="sales_transaction")
        mpesa_code = models.CharField(max_length=200, blank=True, null=True)
        second_mpesa_code = models.CharField(max_length=200, blank=True, null=True)
@@ -624,3 +625,10 @@ class CylinderDepotReport(models.Model):
     business = models.ForeignKey(BusinessDetails, on_delete=models.SET_NULL, null=True, blank=True)
     cylinders_refilled = models.ManyToManyField(CylindersRefilled)
     depot_date = models.DateTimeField(auto_now_add=True)
+ 
+
+
+class OtherProductsPurchaseReport(models.Model):
+    product = models.ForeignKey(OtherProducts, on_delete=models.SET_NULL, null=True, blank=True)
+    price = models.PositiveIntegerField(default=0)
+    purchase_date = models.DateTimeField(auto_now_add=True)

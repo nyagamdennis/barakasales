@@ -46,7 +46,7 @@ ALLOWED_HOSTS = [
 # Application definition
 
 INSTALLED_APPS = [
-  
+    'sales_ai',
     'BarakaApp.apps.BarakaappConfig',
     'users',
     'mpesa',
@@ -240,3 +240,14 @@ SIMPLE_JWT = {
 
 
 AUTH_USER_MODEL = 'users.CustomUser'
+
+
+
+
+# settings.py
+
+CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Change if you're using Docker
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'UTC'

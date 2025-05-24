@@ -24,7 +24,8 @@ urlpatterns = [
     path('', include('BarakaApp.urls')),
     path('users/', include('users.urls')),
     path('mpesa/', include('mpesa.urls')),
-    path('business/', include('Business.urls'))
+    path('business/', include('Business.urls')),
+    path('sales_ai/', include('sales_ai.urls')),
 ]
 
 if settings.DEBUG:

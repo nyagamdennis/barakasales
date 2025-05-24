@@ -32,8 +32,7 @@ class CylinderWeightSerializer(serializers.ModelSerializer):
 
 
 class CylinderSerializer(serializers.ModelSerializer):
-    # gas_type = CylinderTypeSerializer()
-    # weight = CylinderWeightSerializer()
+    
     
     class Meta:
         model = Cylinder
@@ -479,7 +478,7 @@ class RecordBulkMessageSerializer(serializers.ModelSerializer):
 class CreateSalesTeamSerializer(serializers.ModelSerializer):
     class Meta:
         model = SalesTeam
-        fields = ['profile_image', 'name']  # Add other fields as needed
+        fields = ['business','type_of_sales_team', 'profile_image', 'name']  # Add other fields as needed
 
     def create(self, validated_data):
         profile_image = self.context['request'].data.get('profile_image')  # Extract the image from the request
@@ -516,7 +515,7 @@ class CylinderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cylinder
         fields = ['id', 'gas_type', 'weight', 'stores', 'min_wholesale_selling_price', 'min_wholesale_refil_price',
-                  'min_retail_selling_price', 'min_retail_refil_price', 'max_wholesale_selling_price', 'max_wholesale_refil_price', 'empty_cylinder_price']
+                  'min_retail_selling_price', 'min_retail_refil_price', 'max_wholesale_selling_price', 'max_wholesale_refil_price', 'empty_cylinder_price', 'depot_refill_price']
 
 class CylinderTypeSerializer(serializers.ModelSerializer):
     cylinders = CylinderSerializer(many=True, source='cylinder_set', read_only=True)
@@ -547,6 +546,7 @@ class CylinderCreateSerializer(serializers.Serializer):
     max_retail_selling_price = serializers.IntegerField()
     max_retail_refil_price = serializers.IntegerField()
     empty_cylinder_price = serializers.IntegerField()
+    depot_refill_price = serializers.IntegerField()
     filled = serializers.IntegerField()
     empties = serializers.IntegerField()
     spoiled = serializers.IntegerField()
